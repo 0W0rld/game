@@ -1,1 +1,3949 @@
 
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Age of Conflicts: Global Edition</title>
+<style>
+  :root {
+    --bg-dark: #070d18;
+    --panel-bg: rgba(11, 18, 32, 0.92);
+    --panel-border: rgba(148, 163, 184, 0.24);
+    --panel-inner: rgba(20, 31, 52, 0.80);
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  input, select, textarea { user-select: text; -webkit-user-select: text; }
+
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+    background: var(--bg-dark); color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px; touch-action: none;
+  }
+
+  #mapCanvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  #mapCanvas:active { cursor: grabbing; }
+  #mapCanvas.crosshair { cursor: crosshair; }
+
+  .panel {
+    background: var(--panel-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  }
+
+  .scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+  .scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
+  .scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 99px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 6px 10px; border-radius: var(--radius-sm);
+    border: 1px solid rgba(148, 163, 184, 0.26);
+    background: rgba(30, 41, 59, 0.88); color: var(--text-main);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all 0.14s ease; white-space: nowrap;
+  }
+  .btn:hover { background: rgba(51, 65, 85, 0.96); border-color: rgba(148, 163, 184, 0.5); }
+  .btn:active { transform: scale(0.96); }
+  .btn.active, .btn-primary {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-color: #60a5fa; color: #fff;
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+  }
+  .btn-danger { background: linear-gradient(135deg, #dc2626, #b91c1c); border-color: #f87171; color: #fff; }
+  .btn-success { background: linear-gradient(135deg, #16a34a, #15803d); border-color: #4ade80; color: #fff; }
+  .btn-warn { background: linear-gradient(135deg, #d97706, #b45309); border-color: #fbbf24; color: #fff; }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+  .btn-icon { width: 32px; height: 32px; padding: 0; font-size: 14px; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+  .input, .select {
+    width: 100%; padding: 7px 10px; border-radius: var(--radius-sm);
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    background: rgba(15, 23, 42, 0.94); color: #f8fafc;
+    font-size: 12px; font-weight: 500; outline: none;
+  }
+  .input:focus, .select:focus { border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
+
+  /* MAIN MENU OVERLAY */
+  #mainMenuScreen {
+    position: fixed; inset: 0; z-index: 80;
+    background: radial-gradient(circle at 25% 20%, #172a4f 0%, #091122 55%, #040811 100%);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px; overflow-y: auto;
+  }
+  #mainMenuScreen.hidden { display: none; }
+  .menu-shell {
+    width: 100%; max-width: 920px;
+    display: grid; grid-template-columns: 310px 1fr; gap: 16px;
+  }
+  @media (max-width: 820px) {
+    .menu-shell { grid-template-columns: 1fr; max-height: 94vh; overflow-y: auto; }
+  }
+  .menu-card { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .game-logo {
+    font-size: 22px; font-weight: 900; letter-spacing: 0.4px;
+    background: linear-gradient(90deg, #ffffff, #93c5fd);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .section-lbl {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.55px; color: var(--text-muted); margin-bottom: 5px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+
+  .choice-card {
+    padding: 9px 10px; border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(30, 41, 59, 0.65); cursor: pointer;
+    text-align: left; color: var(--text-main); transition: all 0.14s ease;
+  }
+  .choice-card:hover { border-color: #60a5fa; background: rgba(37, 99, 235, 0.2); }
+  .choice-card.active {
+    border-color: #60a5fa; background: rgba(37, 99, 235, 0.34);
+    box-shadow: 0 0 14px rgba(59, 130, 246, 0.35);
+  }
+
+  .saved-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 10px; border-radius: 9px;
+    background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  /* IN-GAME TOP BAR */
+  #topBar {
+    position: fixed; top: 8px; left: 8px; right: 8px; z-index: 30;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 6px; pointer-events: none;
+  }
+  .bar-group { display: flex; align-items: center; gap: 5px; padding: 5px 8px; pointer-events: auto; }
+  .dot-live { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; flex-shrink: 0; }
+  .dot-paused { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+  #zoomControls {
+    position: fixed; left: 10px; top: 66px; z-index: 25;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+
+  #inspector {
+    position: fixed; left: 10px; bottom: 64px; z-index: 30;
+    width: 315px; max-width: calc(100vw - 20px); max-height: calc(100vh - 142px);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #inspector.hidden { display: none; }
+  .insp-body { padding: 10px 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stat-box {
+    background: var(--panel-inner); border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 8px; padding: 6px 4px; text-align: center;
+  }
+  .stat-label { font-size: 9.5px; color: var(--text-muted); text-transform: uppercase; }
+  .stat-val { font-size: 12.5px; font-weight: 700; color: #f8fafc; margin-top: 2px; }
+
+  #rightSidebar {
+    position: fixed; right: 10px; top: 66px; bottom: 64px; z-index: 25;
+    width: 265px; display: flex; flex-direction: column; overflow: hidden;
+    transition: transform 0.22s ease;
+  }
+  #rightSidebar.collapsed { transform: translateX(115%); }
+  .side-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px; background: rgba(15, 23, 42, 0.72);
+    border-bottom: 1px solid var(--panel-border);
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #cbd5e1;
+  }
+  #leaderboard { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .rank-row {
+    display: flex; flex-direction: column; gap: 3px; padding: 5px 7px; border-radius: 8px;
+    background: rgba(30, 41, 59, 0.45); border: 1px solid transparent;
+    cursor: pointer; text-align: left; color: var(--text-main); width: 100%;
+  }
+  .rank-row:hover { background: rgba(51, 65, 85, 0.65); }
+  .rank-row.selected { border-color: #60a5fa; background: rgba(37, 99, 235, 0.25); }
+  .rank-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11.5px; }
+  .rank-name { display: flex; align-items: center; gap: 5px; min-width: 0; font-weight: 600; }
+  .rank-name span.txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.4); flex-shrink: 0; }
+  .bar-bg { height: 4px; background: rgba(15, 23, 42, 0.9); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; }
+
+  #eventLog { height: 185px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+  .log-item { padding: 5px 7px; border-radius: 7px; border-left: 3px solid #64748b; background: rgba(30, 41, 59, 0.48); line-height: 1.3; }
+  .log-war { border-left-color: #ef4444; background: rgba(127, 29, 29, 0.30); }
+  .log-ally { border-left-color: #38bdf8; background: rgba(12, 74, 110, 0.30); }
+  .log-peace { border-left-color: #22c55e; background: rgba(20, 83, 45, 0.30); }
+  .log-pocket { border-left-color: #f97316; background: rgba(124, 45, 18, 0.36); }
+  .log-event { border-left-color: #eab308; background: rgba(113, 63, 18, 0.34); }
+
+  #bottomBar {
+    position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+    z-index: 30; max-width: calc(100vw - 16px); padding: 5px 7px;
+    display: flex; align-items: center; gap: 5px; overflow-x: auto;
+  }
+
+  #actionPrompt {
+    position: fixed; top: 62px; left: 50%; transform: translateX(-50%);
+    z-index: 40; padding: 7px 14px; display: flex; align-items: center; gap: 10px;
+    border-color: rgba(251, 191, 36, 0.55); color: #fde68a; font-weight: 600; font-size: 12px;
+  }
+  #actionPrompt.hidden { display: none; }
+
+  #toastBox {
+    position: fixed; top: 62px; left: 50%; transform: translateX(-50%);
+    z-index: 95; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none;
+  }
+  .toast {
+    padding: 7px 14px; border-radius: 10px; background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(148, 163, 184, 0.45); color: #f8fafc;
+    font-size: 12px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  }
+
+  #hoverTip {
+    position: fixed; z-index: 35; pointer-events: none; padding: 6px 10px;
+    border-radius: 9px; background: rgba(9, 15, 28, 0.94);
+    border: 1px solid rgba(148, 163, 184, 0.38); font-size: 11.5px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.55); display: none; max-width: 235px;
+  }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 88; background: rgba(4, 8, 16, 0.80);
+    backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 14px;
+  }
+  .modal-backdrop.hidden { display: none; }
+  .modal-card { width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .modal-title { font-size: 17px; font-weight: 800; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; border-radius: 9px; background: var(--panel-inner);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+  }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .chip-war { background: rgba(153, 27, 27, 0.55); border: 1px solid rgba(248, 113, 113, 0.45); color: #fecaca; }
+  .chip-ally { background: rgba(7, 89, 133, 0.55); border: 1px solid rgba(56, 189, 248, 0.45); color: #bae6fd; }
+
+  #loadingOverlay {
+    position: fixed; inset: 0; z-index: 100; background: #070d18;
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  }
+  .spinner {
+    width: 38px; height: 38px; border: 4px solid rgba(59, 130, 246, 0.25);
+    border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<canvas id="mapCanvas"></canvas>
+<input type="file" id="hiddenPhotoInput" accept="image/*" style="display:none;">
+<input type="file" id="hiddenJsonInput" accept=".json,application/json" style="display:none;">
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div id="loadingText" style="font-size:15px;font-weight:700;">Building High-Density Province Mesh...</div>
+</div>
+
+<div id="hoverTip"></div>
+<div id="toastBox"></div>
+
+<div id="actionPrompt" class="panel hidden">
+  <span id="actionPromptText">Select target...</span>
+  <button class="btn btn-sm" id="cancelActionBtn" data-i18n="cancel">Cancel</button>
+</div>
+
+<!-- ======================================================================= -->
+<!-- MAIN MENU SCREEN                                                        -->
+<!-- ======================================================================= -->
+<div id="mainMenuScreen">
+  <div class="menu-shell">
+    <!-- Left Column: Account & Saved Maps -->
+    <div class="panel menu-card scroll">
+      <div>
+        <div class="game-logo">🌍 AGE OF CONFLICTS</div>
+        <div style="font-size:11px;color:#93c5fd;font-weight:600;margin-top:2px;" data-i18n="subtitle">Global & European Geopolitical Simulator</div>
+      </div>
+
+      <!-- Account Box -->
+      <div style="padding:10px;border-radius:10px;background:rgba(15,23,42,0.85);border:1px solid rgba(148,163,184,0.22);">
+        <div class="section-lbl" data-i18n="accountTitle">Player Account</div>
+        <div id="loggedOutBox" style="display:flex;flex-direction:column;gap:7px;">
+          <input type="text" id="authLoginInput" class="input" placeholder="Login (e.g. CountryLead6110)" value="CountryLead6110">
+          <input type="password" id="authPassInput" class="input" placeholder="Password" value="Lead6110">
+          <div class="grid-2">
+            <button class="btn btn-primary btn-sm" id="authLoginBtn" data-i18n="signIn">Sign In</button>
+            <button class="btn btn-sm" id="authRegBtn" data-i18n="register">Register</button>
+          </div>
+          <div style="font-size:10.5px;color:#64748b;" data-i18n="presetHint">Preset account: CountryLead6110 / Lead6110</div>
+        </div>
+
+        <div id="loggedInBox" style="display:none;flex-direction:column;gap:7px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-weight:800;color:#4ade80;font-size:13px;">👤 <span id="currentUserLabel">CountryLead6110</span></div>
+              <div style="font-size:10.5px;color:#94a3b8;" data-i18n="cloudSynced">Settings & maps synced to account</div>
+            </div>
+            <button class="btn btn-sm btn-danger" id="authLogoutBtn" data-i18n="logout">Logout</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Saved Maps List -->
+      <div style="flex:1;display:flex;flex-direction:column;min-height:130px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+          <span class="section-lbl" style="margin:0;" data-i18n="savedMapsTitle">Saved Maps</span>
+          <button class="btn btn-sm" id="menuImportJsonBtn" data-i18n="importFile">📂 Import JSON</button>
+        </div>
+        <div id="savedMapsList" class="scroll" style="flex:1;max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;"></div>
+      </div>
+
+      <button class="btn" id="menuSettingsBtn" data-i18n="settingsBtn">⚙ Settings & Language</button>
+    </div>
+
+    <!-- Right Column: Campaign Setup -->
+    <div class="panel menu-card scroll">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:16px;font-weight:800;color:#fff;" data-i18n="newCampaignTitle">New Campaign Setup</span>
+        <button class="btn btn-sm" id="resumeGameBtn" style="display:none;" data-i18n="resumeBtn">▶ Resume</button>
+      </div>
+
+      <div>
+        <div class="section-lbl" data-i18n="selectMapLbl">1. Select Theater / Map</div>
+        <div class="grid-2">
+          <button class="choice-card map-choice active" data-maptype="europe">
+            <div style="font-weight:800;font-size:13px;" data-i18n="mapEuropeTitle">🇪🇺 Europe (Satellite + GeoJSON)</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px;" data-i18n="mapEuropeDesc">Real satellite photo + accurate borders</div>
+          </button>
+          <button class="choice-card map-choice" data-maptype="world">
+            <div style="font-weight:800;font-size:13px;" data-i18n="mapWorldTitle">🌐 World Map</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px;" data-i18n="mapWorldDesc">All continents, oceans & global empires</div>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-lbl" data-i18n="selectModeLbl">2. Game Mode</div>
+        <div class="grid-2">
+          <button class="choice-card mode-choice active" data-gmode="god">
+            <div style="font-weight:800;font-size:13px;" data-i18n="modeGodTitle">👑 God Simulator</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px;" data-i18n="modeGodDesc">Control all nations, borders, ideologies & wars</div>
+          </button>
+          <button class="choice-card mode-choice" data-gmode="player">
+            <div style="font-weight:800;font-size:13px;" data-i18n="modePlayerTitle">🎖 Play as Nation</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px;" data-i18n="modePlayerDesc">Lead one country with divisions & frontline AI</div>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-lbl" data-i18n="selectEraLbl">3. Historical Era</div>
+        <div class="grid-4">
+          <button class="choice-card era-choice" data-era="1800">
+            <div style="font-weight:800;">1800</div>
+            <div style="font-size:10px;color:#94a3b8;" data-i18n="era1800">Napoleon</div>
+          </button>
+          <button class="choice-card era-choice" data-era="1900">
+            <div style="font-weight:800;">1900</div>
+            <div style="font-size:10px;color:#94a3b8;" data-i18n="era1900">Empires</div>
+          </button>
+          <button class="choice-card era-choice" data-era="1936">
+            <div style="font-weight:800;">1936</div>
+            <div style="font-size:10px;color:#94a3b8;" data-i18n="era1936">WW2 Eve</div>
+          </button>
+          <button class="choice-card era-choice active" data-era="2026">
+            <div style="font-weight:800;">2026</div>
+            <div style="font-size:10px;color:#94a3b8;" data-i18n="era2026">Modern</div>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-lbl" data-i18n="selectDensityLbl">4. Province Mesh Density (Points)</div>
+        <div class="grid-3">
+          <button class="choice-card density-choice active" data-density="10000">
+            <div style="font-weight:800;">10k</div>
+            <div style="font-size:10px;color:#94a3b8;" data-i18n="dens10k">Fast & Smooth</div>
+          </button>
+          <button class="choice-card density-choice" data-density="100000">
+            <div style="font-weight:800;">100k</div>
+            <div style="font-size:10px;color:#94a3b8;" data-i18n="dens100k">Ultra Detail</div>
+          </button>
+          <button class="choice-card density-choice" data-density="1000000">
+            <div style="font-weight:800;">1M</div>
+            <div style="font-size:10px;color:#94a3b8;" data-i18n="dens1m">1 Million Test</div>
+          </button>
+        </div>
+      </div>
+
+      <div id="playerCountrySelectWrap" style="display:none;">
+        <div class="section-lbl" data-i18n="chooseNationLbl">Choose Your Nation</div>
+        <select id="startCountrySelect" class="select"></select>
+      </div>
+
+      <button class="btn btn-success" id="launchGameBtn" style="padding:11px;font-size:14px;margin-top:auto;" data-i18n="startGameBtn">🚀 Launch Campaign</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================= -->
+<!-- IN-GAME HUD                                                             -->
+<!-- ======================================================================= -->
+<header id="topBar">
+  <div class="panel bar-group">
+    <button class="btn btn-sm" id="backToMenuBtn" data-i18n="menuBtn">🏠 Menu</button>
+    <div id="simDot" class="dot-live"></div>
+    <div style="margin-right:4px;">
+      <div id="dateLabel" style="font-weight:800;font-size:12.5px;line-height:1.1;">2026, Jan</div>
+      <div id="modeBadge" style="font-size:10px;color:#93c5fd;font-weight:600;">God Simulator</div>
+    </div>
+    <button class="btn btn-sm speed-btn" data-speed="0">⏸</button>
+    <button class="btn btn-sm speed-btn active" data-speed="1">1x</button>
+    <button class="btn btn-sm speed-btn" data-speed="3">3x</button>
+    <button class="btn btn-sm speed-btn" data-speed="8">8x</button>
+    <button class="btn btn-sm btn-primary" id="toggleGlobalAiBtn" title="Toggle Diplomacy AI for all nations">🤖 All AI: ON</button>
+  </div>
+
+  <div class="panel bar-group">
+    <button class="btn btn-sm mapmode-btn active" data-mapmode="satellite" data-i18n="mmSat">🛰 Satellite</button>
+    <button class="btn btn-sm mapmode-btn" data-mapmode="political" data-i18n="mmPol">🗺 Political</button>
+    <button class="btn btn-sm mapmode-btn" data-mapmode="physical" data-i18n="mmPhy">🏔 Terrain</button>
+  </div>
+
+  <div class="panel bar-group">
+    <button class="btn btn-sm" id="uploadPhotoBtn" data-i18n="uploadPhoto">🖼 Satellite</button>
+    <button class="btn btn-sm btn-primary" id="loadGeoJsonBtn" title="Snap borders using real-world GeoJSON">🌐 GeoJSON</button>
+    <button class="btn btn-sm btn-success" id="saveMapBtn" data-i18n="saveMap">💾 Save</button>
+    <button class="btn btn-sm" id="openSettingsBtn" data-i18n="settingsBtn">⚙ Settings</button>
+    <button class="btn btn-sm" id="toggleSidebarBtn">📊</button>
+  </div>
+</header>
+
+<div id="zoomControls">
+  <button class="panel btn btn-icon" id="zoomInBtn">+</button>
+  <button class="panel btn btn-icon" id="zoomOutBtn">−</button>
+  <button class="panel btn btn-icon" id="resetCamBtn">⌖</button>
+</div>
+
+<!-- Country Inspector -->
+<aside id="inspector" class="panel hidden">
+  <div class="side-hdr">
+    <div style="display:flex;align-items:center;gap:7px;min-width:0;">
+      <span id="inspSwatch" class="swatch" style="width:14px;height:14px;"></span>
+      <span id="inspTitle" style="font-size:12px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Nation</span>
+    </div>
+    <button class="btn btn-sm" id="closeInspBtn" style="padding:2px 6px;">✕</button>
+  </div>
+  <div class="insp-body scroll">
+    <div>
+      <div class="section-lbl" data-i18n="nationNameLbl">Country Name</div>
+      <div style="display:flex;gap:5px;">
+        <input type="text" id="inspNameInput" class="input" maxlength="34">
+        <button class="btn btn-sm btn-primary" id="inspRenameBtn">✔</button>
+      </div>
+    </div>
+
+    <div class="toggle-row" style="padding:6px 9px;">
+      <div>
+        <div style="font-weight:700;font-size:11.5px;" data-i18n="countryAiLbl">🤖 Nation Diplomacy AI</div>
+        <div style="font-size:10px;color:#94a3b8;" data-i18n="countryAiDesc">Allow declaring wars & pacts</div>
+      </div>
+      <input type="checkbox" id="inspCountryAiChk" checked style="width:16px;height:16px;cursor:pointer;">
+    </div>
+
+    <div>
+      <div class="section-lbl" style="display:flex;justify-content:space-between;">
+        <span data-i18n="ideologyLbl">Ideology</span>
+        <span id="inspIdeoBonus" style="color:#93c5fd;text-transform:none;font-weight:500;"></span>
+      </div>
+      <select id="inspIdeoSelect" class="select"></select>
+    </div>
+
+    <div>
+      <div class="section-lbl" style="display:flex;justify-content:space-between;">
+        <span data-i18n="doctrineLbl">Military Doctrine</span>
+        <span id="inspDocBonus" style="color:#fde68a;text-transform:none;font-weight:500;"></span>
+      </div>
+      <select id="inspDocSelect" class="select"></select>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-label" data-i18n="statRegions">Regions</div>
+        <div class="stat-val" id="inspProvs">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label" data-i18n="statArmy">Army</div>
+        <div class="stat-val" id="inspArmy" style="color:#fca5a5;">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label" data-i18n="statAuth">Authority / Exhaust</div>
+        <div class="stat-val" id="inspAuth" style="color:#fde68a;">50 / 0%</div>
+      </div>
+    </div>
+
+    <div id="playerControlsBox" style="display:none;flex-direction:column;gap:6px;">
+      <div class="toggle-row">
+        <div>
+          <div style="font-weight:700;font-size:12px;" data-i18n="autoFrontLbl">AI Frontline General</div>
+          <div style="font-size:10px;color:#94a3b8;" data-i18n="autoFrontDesc">Auto-advance divisions by doctrine</div>
+        </div>
+        <input type="checkbox" id="playerAutoFrontChk" checked style="width:17px;height:17px;cursor:pointer;">
+      </div>
+      <div class="grid-2">
+        <button class="btn btn-sm btn-success" id="playerMobilizeBtn" data-i18n="mobilizeBtn">🪖 Mobilize (120💰)</button>
+        <button class="btn btn-sm btn-primary" id="playerOrderBtn" data-i18n="orderBtn">⚔ Order Division</button>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:3px;">⚔ <span data-i18n="atWarWith">At War</span> (<span id="inspWarCnt">0</span>)</div>
+      <div id="inspWarList" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#38bdf8;margin-bottom:3px;">🤝 <span data-i18n="alliesWith">Allies</span> (<span id="inspAllyCnt">0</span>)</div>
+      <div id="inspAllyList" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+    </div>
+
+    <div id="inspActionBtns" class="grid-2" style="padding-top:6px;border-top:1px solid var(--panel-border);">
+      <button class="btn btn-sm btn-danger" id="inspWarBtn" data-i18n="declareWarBtn">⚔ Declare War</button>
+      <button class="btn btn-sm btn-primary" id="inspAllyBtn" data-i18n="allianceBtn">🤝 Alliance</button>
+      <button class="btn btn-sm btn-success" id="inspPeaceBtn" data-i18n="peaceBtn">🕊 Peace</button>
+      <button class="btn btn-sm btn-warn" id="inspTroopsBtn" data-i18n="addTroopsBtn">🪖 +150k Army</button>
+      <button class="btn btn-sm" id="inspRebelBtn" style="grid-column:span 2;" data-i18n="revoltBtn">🔥 Trigger Revolution</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Right Sidebar -->
+<aside id="rightSidebar" class="panel">
+  <div class="side-hdr">
+    <span data-i18n="rankingTitle">Great Powers</span>
+    <span id="aliveCountLbl" style="color:#60a5fa;">0</span>
+  </div>
+  <div id="leaderboard" class="scroll"></div>
+  <div class="side-hdr" style="border-top:1px solid var(--panel-border);">
+    <span data-i18n="worldEventsTitle">World Events</span>
+    <span id="provCountBadge" style="color:#64748b;font-size:10px;">0 pts</span>
+  </div>
+  <div id="eventLog" class="scroll"></div>
+</aside>
+
+<!-- Bottom Bar -->
+<footer id="bottomBar" class="panel scroll">
+  <button class="btn btn-sm tool-btn active" data-tool="inspect" data-i18n="toolInspect">🔍 Inspect</button>
+  <button class="btn btn-sm tool-btn" data-tool="order" data-i18n="toolOrder">🎯 Move Division</button>
+  <button class="btn btn-sm tool-btn god-only" data-tool="paint" data-i18n="toolPaint">🖌 Border Brush</button>
+  <div id="brushControls" class="god-only" style="display:none;align-items:center;gap:5px;padding:0 6px;border-left:1px solid var(--panel-border);border-right:1px solid var(--panel-border);">
+    <span style="font-size:10.5px;color:#94a3b8;">Size:</span>
+    <input type="range" id="brushSizeInput" min="1" max="55" value="14" style="width:65px;">
+    <span id="brushSizeVal" style="font-size:10.5px;font-weight:700;color:#60a5fa;">14</span>
+    <button class="btn btn-sm btn-primary" id="exportScenarioCodeBtn" title="Download Scenario JSON">📤 Export</button>
+  </div>
+  <button class="btn btn-sm tool-btn god-only" data-tool="war" data-i18n="toolWar">⚔ War</button>
+  <button class="btn btn-sm tool-btn god-only" data-tool="ally" data-i18n="toolAlly">🤝 Ally</button>
+  <button class="btn btn-sm tool-btn god-only" data-tool="troops" data-i18n="toolTroops">🪖 +Army</button>
+  <button class="btn btn-sm tool-btn god-only" data-tool="revolt" data-i18n="toolRevolt">🔥 Revolt</button>
+</footer>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal-backdrop hidden">
+  <div class="panel modal-card scroll">
+    <div class="modal-title">
+      <span data-i18n="settingsTitle">⚙ Settings</span>
+      <button class="btn btn-sm" id="closeSettingsBtn">✕</button>
+    </div>
+
+    <div class="toggle-row">
+      <div>
+        <div style="font-weight:700;" data-i18n="langLabel">Interface Language</div>
+        <div style="font-size:11px;color:#94a3b8;" data-i18n="langDesc">Default is English</div>
+      </div>
+      <select id="setLangSelect" class="select" style="width:130px;">
+        <option value="en">English</option>
+        <option value="ru">Русский</option>
+      </select>
+    </div>
+
+    <div class="toggle-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-weight:700;">Default Europe Satellite URL</span>
+        <span style="font-size:10.5px;color:#93c5fd;">GitHub / Direct Image</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="setDefaultMapUrl" class="input" placeholder="https://raw.githubusercontent.com/...">
+        <button class="btn btn-sm btn-primary" id="applyMapUrlBtn">Load</button>
+      </div>
+    </div>
+
+    <div class="toggle-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-weight:700;" data-i18n="provDensityLbl">Micro-Provinces Density (Points)</span>
+        <span id="setDensityVal" style="color:#60a5fa;font-weight:700;">10,000</span>
+      </div>
+      <div class="grid-3">
+        <button class="btn btn-sm preset-dens-btn" data-val="10000">10,000 (10k)</button>
+        <button class="btn btn-sm preset-dens-btn" data-val="100000">100,000 (100k)</button>
+        <button class="btn btn-sm preset-dens-btn" data-val="1000000">1,000,000 (1M)</button>
+      </div>
+      <input type="range" id="setDensity" min="2000" max="1000000" step="2000" value="10000" style="width:100%;">
+      <button class="btn btn-sm btn-primary" id="rebuildMeshBtn" data-i18n="rebuildMeshBtn">🔄 Rebuild Province Mesh</button>
+    </div>
+
+    <div class="toggle-row">
+      <div>
+        <div style="font-weight:700;" data-i18n="setWaterLbl">Water Detection Threshold</div>
+        <div style="font-size:11px;color:#94a3b8;" data-i18n="setWaterDesc">Adjust ocean vs land scan on uploaded photo</div>
+      </div>
+      <input type="range" id="setWaterThresh" min="5" max="65" step="2" value="24" style="width:110px;">
+    </div>
+
+    <div class="toggle-row">
+      <div style="font-weight:700;" data-i18n="setYearLockLbl">Historical Doctrine Year Lock</div>
+      <input type="checkbox" id="setYearLock" checked style="width:17px;height:17px;">
+    </div>
+
+    <div class="toggle-row">
+      <div style="font-weight:700;" data-i18n="setPocketsLbl">Encirclement & Supply Pockets</div>
+      <input type="checkbox" id="setPockets" checked style="width:17px;height:17px;">
+    </div>
+
+    <div class="toggle-row">
+      <div style="font-weight:700;" data-i18n="setCitiesLbl">Show Cities on Map</div>
+      <input type="checkbox" id="setCities" checked style="width:17px;height:17px;">
+    </div>
+
+    <div class="toggle-row">
+      <div style="font-weight:700;" data-i18n="setGridLbl">Show Micro-Province Grid</div>
+      <input type="checkbox" id="setGrid" checked style="width:17px;height:17px;">
+    </div>
+
+    <div class="toggle-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-weight:700;" data-i18n="setAggrLbl">AI Aggressiveness</span>
+        <span id="setAggrVal" style="color:#60a5fa;font-weight:700;">1.0x</span>
+      </div>
+      <input type="range" id="setAggr" min="0.2" max="2.5" step="0.1" value="1.0" style="width:100%;">
+    </div>
+
+    <button class="btn btn-success" id="saveSettingsBtn" data-i18n="doneBtn">Save & Close</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ==========================================================================
+  // 0. GITHUB PAGES & REPOSITORY ASSETS (0W0rld/game)
+  // ==========================================================================
+  const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/0W0rld/game/main/';
+  const DEFAULT_EUROPE_MAP_URL = './europe-satellite-map.jpg';
+  const FALLBACK_EUROPE_MAP_URL = GITHUB_RAW_BASE + 'europe-satellite-map.jpg';
+
+  function normalizeImageUrl(url) {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (trimmed.includes('github.com/') && trimmed.includes('/blob/')) {
+      return trimmed.replace('github.com/', 'raw.githubusercontent.com/').replace('/blob/', '/');
+    }
+    return trimmed;
+  }
+
+  async function tryLoadHostedScenario(eraKey) {
+    const paths = [`./scenarios/${eraKey}.json`, `${GITHUB_RAW_BASE}scenarios/${eraKey}.json`];
+    for (const url of paths) {
+      try {
+        const res = await fetch(url, { cache: 'no-cache' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.provOwnerB64) return json;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  // ==========================================================================
+  // 1. SAFE STORAGE & ACCOUNT DATABASE (CountryLead6110 / Lead6110)
+  // ==========================================================================
+  function safeGet(key, fallback) {
+    try {
+      const v = window.localStorage.getItem(key);
+      return v !== null ? JSON.parse(v) : fallback;
+    } catch (_) { return fallback; }
+  }
+  function safeSet(key, val) {
+    try { window.localStorage.setItem(key, JSON.stringify(val)); } catch (_) {}
+  }
+
+  const DEFAULT_SETTINGS = {
+    lang: 'en',
+    targetProvs: 10000,
+    waterThresh: 24,
+    yearLock: true,
+    pockets: true,
+    cities: true,
+    grid: true,
+    aggressiveness: 1.0,
+    europeMapUrl: DEFAULT_EUROPE_MAP_URL
+  };
+
+  let userDB = safeGet('aoc_users_db_v3', null);
+  if (!userDB || !userDB['CountryLead6110']) {
+    userDB = Object.assign({
+      'CountryLead6110': {
+        password: 'Lead6110',
+        settings: Object.assign({}, DEFAULT_SETTINGS),
+        savedMaps: []
+      }
+    }, userDB || {});
+    safeSet('aoc_users_db_v3', userDB);
+  }
+
+  let currentUser = safeGet('aoc_current_user_v3', 'CountryLead6110');
+  if (currentUser && !userDB[currentUser]) currentUser = null;
+
+  let settings = Object.assign(
+    {},
+    DEFAULT_SETTINGS,
+    currentUser && userDB[currentUser]?.settings ? userDB[currentUser].settings : {}
+  );
+  if (!settings.europeMapUrl) settings.europeMapUrl = DEFAULT_EUROPE_MAP_URL;
+
+  function persistUserAccount() {
+    if (!currentUser || !userDB[currentUser]) return;
+    userDB[currentUser].settings = Object.assign({}, settings);
+    safeSet('aoc_users_db_v3', userDB);
+  }
+
+  // ==========================================================================
+  // 2. LOCALIZATION (ENGLISH DEFAULT + RUSSIAN)
+  // ==========================================================================
+  const I18N = {
+    en: {
+      subtitle: 'Global & European Geopolitical Simulator',
+      accountTitle: 'Player Account',
+      signIn: 'Sign In',
+      register: 'Register',
+      presetHint: 'Preset account: CountryLead6110 / Lead6110',
+      cloudSynced: 'Settings & maps synced to account',
+      logout: 'Logout',
+      savedMapsTitle: 'Saved Maps',
+      importFile: '📂 Import JSON',
+      settingsBtn: '⚙ Settings',
+      newCampaignTitle: 'New Campaign Setup',
+      resumeBtn: '▶ Resume',
+      selectMapLbl: '1. Select Theater / Map',
+      mapEuropeTitle: '🇪🇺 Europe (Satellite + GeoJSON)',
+      mapEuropeDesc: 'Real satellite photo + accurate borders',
+      mapWorldTitle: '🌐 World Map',
+      mapWorldDesc: 'All continents, oceans & global empires',
+      selectModeLbl: '2. Game Mode',
+      modeGodTitle: '👑 God Simulator',
+      modeGodDesc: 'Control all nations, borders, ideologies & wars',
+      modePlayerTitle: '🎖 Play as Nation',
+      modePlayerDesc: 'Lead one country with divisions & frontline AI',
+      selectEraLbl: '3. Historical Era',
+      era1800: 'Napoleon',
+      era1900: 'Empires',
+      era1936: 'WW2 Eve',
+      era2026: 'Modern',
+      selectDensityLbl: '4. Province Mesh Density (Points)',
+      dens10k: 'Fast & Smooth',
+      dens100k: 'Ultra Detail',
+      dens1m: '1 Million Test',
+      chooseNationLbl: 'Choose Your Nation',
+      startGameBtn: '🚀 Launch Campaign',
+      menuBtn: '🏠 Menu',
+      mmSat: '🛰 Satellite',
+      mmPol: '🗺 Political',
+      mmPhy: '🏔 Terrain',
+      uploadPhoto: '🖼 Satellite',
+      saveMap: '💾 Save',
+      nationNameLbl: 'Country Name',
+      countryAiLbl: '🤖 Nation Diplomacy AI',
+      countryAiDesc: 'Allow declaring wars & pacts',
+      ideologyLbl: 'Ideology',
+      doctrineLbl: 'Military Doctrine',
+      statRegions: 'Regions',
+      statArmy: 'Army',
+      statAuth: 'Authority / Exhaust',
+      autoFrontLbl: 'AI Frontline General',
+      autoFrontDesc: 'Auto-advance divisions by doctrine',
+      mobilizeBtn: '🪖 Mobilize (120💰)',
+      orderBtn: '⚔ Order Division',
+      atWarWith: 'At War',
+      alliesWith: 'Allies',
+      declareWarBtn: '⚔ Declare War',
+      allianceBtn: '🤝 Alliance',
+      peaceBtn: '🕊 Peace',
+      addTroopsBtn: '🪖 +150k Army',
+      revoltBtn: '🔥 Trigger Revolution',
+      rankingTitle: 'Great Powers',
+      worldEventsTitle: 'World Events',
+      toolInspect: '🔍 Inspect',
+      toolOrder: '🎯 Move Division',
+      toolPaint: '🖌 Border Brush',
+      toolWar: '⚔ War',
+      toolAlly: '🤝 Ally',
+      toolTroops: '🪖 +Army',
+      toolRevolt: '🔥 Revolt',
+      settingsTitle: '⚙ Settings',
+      langLabel: 'Interface Language',
+      langDesc: 'Default is English',
+      provDensityLbl: 'Micro-Provinces Density (Points)',
+      rebuildMeshBtn: '🔄 Rebuild Province Mesh',
+      setWaterLbl: 'Water Detection Threshold',
+      setWaterDesc: 'Adjust ocean vs land scan on uploaded photo',
+      setYearLockLbl: 'Historical Doctrine Year Lock',
+      setPocketsLbl: 'Encirclement & Supply Pockets',
+      setCitiesLbl: 'Show Cities on Map',
+      setGridLbl: 'Show Micro-Province Grid',
+      setAggrLbl: 'AI Aggressiveness',
+      doneBtn: 'Save & Close',
+      cancel: 'Cancel',
+      noSavedMaps: 'No saved maps yet. Click Save in game.'
+    },
+    ru: {
+      subtitle: 'Глобальный и европейский геополитический симулятор',
+      accountTitle: 'Аккаунт игрока',
+      signIn: 'Войти',
+      register: 'Регистрация',
+      presetHint: 'Базовый аккаунт: CountryLead6110 / Lead6110',
+      cloudSynced: 'Настройки и карты сохраняются в аккаунт',
+      logout: 'Выйти',
+      savedMapsTitle: 'Сохранённые карты',
+      importFile: '📂 Импорт JSON',
+      settingsBtn: '⚙ Настройки',
+      newCampaignTitle: 'Настройка новой кампании',
+      resumeBtn: '▶ Вернуться',
+      selectMapLbl: '1. Выбор карты',
+      mapEuropeTitle: '🇪🇺 Европа (Спутник + GeoJSON)',
+      mapEuropeDesc: 'Спутниковый снимок + точные границы',
+      mapWorldTitle: '🌐 Карта мира',
+      mapWorldDesc: 'Все континенты, океаны и мировые державы',
+      selectModeLbl: '2. Режим игры',
+      modeGodTitle: '👑 Симулятор Бога',
+      modeGodDesc: 'Управление всеми странами, границами и войнами',
+      modePlayerTitle: '🎖 Игра за страну',
+      modePlayerDesc: 'Возглавьте одну державу с дивизиями и фронтом',
+      selectEraLbl: '3. Историческая эпоха',
+      era1800: 'Наполеон',
+      era1900: 'Империи',
+      era1936: 'Перед ВМВ',
+      era2026: 'Современность',
+      selectDensityLbl: '4. Плотность точек (микро-провинций)',
+      dens10k: 'Быстро и плавно',
+      dens100k: 'Высокая детализация',
+      dens1m: 'Тест 1 миллион',
+      chooseNationLbl: 'Выберите страну',
+      startGameBtn: '🚀 Начать кампанию',
+      menuBtn: '🏠 Меню',
+      mmSat: '🛰 Спутник',
+      mmPol: '🗺 Политическая',
+      mmPhy: '🏔 Рельеф',
+      uploadPhoto: '🖼 Спутник',
+      saveMap: '💾 Сохранить',
+      nationNameLbl: 'Название страны',
+      countryAiLbl: '🤖 Дипломатия ИИ страны',
+      countryAiDesc: 'Разрешить самой объявлять войны и союзы',
+      ideologyLbl: 'Идеология',
+      doctrineLbl: 'Военная доктрина',
+      statRegions: 'Регионы',
+      statArmy: 'Армия',
+      statAuth: 'Авторитет / Устал.',
+      autoFrontLbl: 'Авто-фронт ИИ',
+      autoFrontDesc: 'Генерал сам ведёт дивизии по доктрине',
+      mobilizeBtn: '🪖 Мобилизация (120💰)',
+      orderBtn: '⚔ Приказ дивизии',
+      atWarWith: 'Воюет с',
+      alliesWith: 'Союзники',
+      declareWarBtn: '⚔ Объявить войну',
+      allianceBtn: '🤝 Альянс',
+      peaceBtn: '🕊 Мир',
+      addTroopsBtn: '🪖 +150k армии',
+      revoltBtn: '🔥 Революция',
+      rankingTitle: 'Рейтинг держав',
+      worldEventsTitle: 'Мировые события',
+      toolInspect: '🔍 Осмотр',
+      toolOrder: '🎯 Приказ дивизии',
+      toolPaint: '🖌 Кисть границ',
+      toolWar: '⚔ Война',
+      toolAlly: '🤝 Альянс',
+      toolTroops: '🪖 +Армия',
+      toolRevolt: '🔥 Восстание',
+      settingsTitle: '⚙ Настройки',
+      langLabel: 'Язык интерфейса',
+      langDesc: 'По умолчанию Английский',
+      provDensityLbl: 'Плотность микро-провинций (точек)',
+      rebuildMeshBtn: '🔄 Перестроить сетку',
+      setWaterLbl: 'Порог воды при сканировании фото',
+      setWaterDesc: 'Отделение морей от суши на загруженном снимке',
+      setYearLockLbl: 'Ограничение доктрин по году',
+      setPocketsLbl: 'Механика котлов и снабжения',
+      setCitiesLbl: 'Города на карте',
+      setGridLbl: 'Сетка микро-провинций',
+      setAggrLbl: 'Агрессивность ИИ',
+      doneBtn: 'Сохранить и закрыть',
+      cancel: 'Отмена',
+      noSavedMaps: 'Нет сохранённых карт. Нажмите «Сохранить» в игре.'
+    }
+  };
+
+  function tr(key) {
+    const dict = I18N[settings.lang] || I18N.en;
+    return dict[key] || I18N.en[key] || key;
+  }
+
+  function applyLanguage() {
+    document.documentElement.lang = settings.lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      el.textContent = tr(el.dataset.i18n);
+    });
+    updateGlobalAiButtonUI();
+    renderSavedMapsList();
+    if (nations.length > 0) updateAllUI();
+  }
+
+  // ==========================================================================
+  // 3. CONSTANTS, IDEOLOGIES, DOCTRINES & DATASETS
+  // ==========================================================================
+  const GRID_W = 1400;
+  const GRID_H = 1080;
+  const TOTAL_PX = GRID_W * GRID_H;
+  const MAX_PROVS = 1000005;
+
+  const MONTHS_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS_RU = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+
+  const IDEOLOGIES = {
+    democracy: {
+      id: 'democracy', en: 'Democracy', ru: 'Демократия', icon: '🏛', color: '#3b82f6',
+      descEn: '+20% Econ, -30% Aggression', descRu: '+20% эконом., -30% агрессия',
+      econMod: 1.20, mobMod: 1.0, atkMod: 1.0, defMod: 1.06, cityDefMod: 1.05, speedMod: 1.0, aggrMod: 0.70
+    },
+    monarchy: {
+      id: 'monarchy', en: 'Monarchy', ru: 'Монархия', icon: '👑', color: '#eab308',
+      descEn: '+15% Defense & Authority', descRu: '+15% оборона и авторитет',
+      econMod: 1.05, mobMod: 1.05, atkMod: 1.05, defMod: 1.15, cityDefMod: 1.05, speedMod: 1.0, aggrMod: 1.0
+    },
+    communism: {
+      id: 'communism', en: 'Communism', ru: 'Коммунизм', icon: '★', color: '#ef4444',
+      descEn: '+35% Manpower, +25% City Def', descRu: '+35% резерв, +25% оборона городов',
+      econMod: 1.0, mobMod: 1.35, atkMod: 1.05, defMod: 1.05, cityDefMod: 1.25, speedMod: 1.0, aggrMod: 1.15
+    },
+    authoritarian: {
+      id: 'authoritarian', en: 'Authoritarian', ru: 'Авторитаризм', icon: '⚡', color: '#ea580c',
+      descEn: '+25% Attack, +20% Breakthrough', descRu: '+25% атака, +20% прорыв',
+      econMod: 0.95, mobMod: 1.15, atkMod: 1.25, defMod: 0.95, cityDefMod: 1.0, speedMod: 1.20, aggrMod: 1.55
+    },
+    neutral: {
+      id: 'neutral', en: 'Neutrality', ru: 'Нейтралитет', icon: '⚖', color: '#94a3b8',
+      descEn: '+25% Home Defense', descRu: '+25% защита своей земли',
+      econMod: 1.12, mobMod: 0.90, atkMod: 0.90, defMod: 1.25, cityDefMod: 1.15, speedMod: 0.95, aggrMod: 0.35
+    }
+  };
+
+  const DOCTRINES = {
+    napoleon: {
+      id: 'napoleon', en: 'Napoleonic Warfare', ru: 'Тактика Наполеона', minYear: 1800,
+      atk: 1.20, def: 1.0, speed: 1.08, encirclementBias: 0.30, capitalBias: 1.9
+    },
+    trench: {
+      id: 'trench', en: 'Trench Warfare', ru: 'Окопная война', minYear: 1880,
+      atk: 0.92, def: 1.35, speed: 0.80, encirclementBias: 0.15, capitalBias: 0.6
+    },
+    deep_op: {
+      id: 'deep_op', en: 'Deep Operation', ru: 'Глубокая операция', minYear: 1930,
+      atk: 1.15, def: 1.10, speed: 1.14, encirclementBias: 0.60, capitalBias: 1.0
+    },
+    blitzkrieg: {
+      id: 'blitzkrieg', en: 'Blitzkrieg', ru: 'Блицкриг', minYear: 1935,
+      atk: 1.26, def: 0.92, speed: 1.36, encirclementBias: 1.70, capitalBias: 1.2
+    },
+    network: {
+      id: 'network', en: 'Modern Network', ru: 'Современная сетевая', minYear: 1990,
+      atk: 1.25, def: 1.25, speed: 1.25, encirclementBias: 1.15, capitalBias: 1.1
+    }
+  };
+
+  // Calibrated cities on europe-satellite-map.jpg (normalized u, v)
+  const EUROPE_CITIES = [
+    { name: 'Reykjavik', u: 0.180, v: 0.098, major: true },
+    { name: 'Dublin', u: 0.232, v: 0.432, major: true },
+    { name: 'London', u: 0.312, v: 0.502, major: true },
+    { name: 'Edinburgh', u: 0.292, v: 0.382, major: false },
+    { name: 'Lisbon', u: 0.142, v: 0.855, major: true },
+    { name: 'Madrid', u: 0.212, v: 0.822, major: true },
+    { name: 'Barcelona', u: 0.286, v: 0.785, major: false },
+    { name: 'Paris', u: 0.356, v: 0.578, major: true },
+    { name: 'Marseille', u: 0.395, v: 0.728, major: false },
+    { name: 'Brussels', u: 0.394, v: 0.524, major: true },
+    { name: 'Amsterdam', u: 0.408, v: 0.484, major: true },
+    { name: 'Bern', u: 0.428, v: 0.642, major: false },
+    { name: 'Hamburg', u: 0.468, v: 0.468, major: false },
+    { name: 'Berlin', u: 0.515, v: 0.486, major: true },
+    { name: 'Munich', u: 0.485, v: 0.605, major: false },
+    { name: 'Copenhagen', u: 0.498, v: 0.408, major: true },
+    { name: 'Oslo', u: 0.482, v: 0.292, major: true },
+    { name: 'Stockholm', u: 0.562, v: 0.315, major: true },
+    { name: 'Helsinki', u: 0.642, v: 0.285, major: true },
+    { name: 'Tallinn', u: 0.644, v: 0.322, major: true },
+    { name: 'Riga', u: 0.646, v: 0.376, major: true },
+    { name: 'Vilnius', u: 0.662, v: 0.432, major: true },
+    { name: 'Warsaw', u: 0.604, v: 0.502, major: true },
+    { name: 'Prague', u: 0.528, v: 0.556, major: true },
+    { name: 'Vienna', u: 0.556, v: 0.608, major: true },
+    { name: 'Bratislava', u: 0.572, v: 0.612, major: false },
+    { name: 'Budapest', u: 0.602, v: 0.635, major: true },
+    { name: 'Milan', u: 0.448, v: 0.688, major: false },
+    { name: 'Rome', u: 0.492, v: 0.788, major: true },
+    { name: 'Zagreb', u: 0.554, v: 0.672, major: false },
+    { name: 'Belgrade', u: 0.618, v: 0.706, major: true },
+    { name: 'Bucharest', u: 0.702, v: 0.722, major: true },
+    { name: 'Sofia', u: 0.668, v: 0.768, major: true },
+    { name: 'Athens', u: 0.686, v: 0.882, major: true },
+    { name: 'Istanbul', u: 0.778, v: 0.802, major: true },
+    { name: 'Ankara', u: 0.848, v: 0.838, major: true },
+    { name: 'Minsk', u: 0.706, v: 0.448, major: true },
+    { name: 'Kyiv', u: 0.742, v: 0.538, major: true },
+    { name: 'Odesa', u: 0.746, v: 0.652, major: false },
+    { name: 'St. Petersburg', u: 0.715, v: 0.285, major: true },
+    { name: 'Moscow', u: 0.816, v: 0.402, major: true },
+    { name: 'Tbilisi', u: 0.962, v: 0.795, major: true },
+    { name: 'Algiers', u: 0.308, v: 0.942, major: true },
+    { name: 'Tunis', u: 0.452, v: 0.935, major: true }
+  ];
+
+  const EUROPE_SEA_BRIDGES = [
+    [[0.20,0.11],[0.29,0.31]], [[0.24,0.09],[0.45,0.24]], [[0.24,0.42],[0.27,0.42]],
+    [[0.33,0.52],[0.35,0.54]], [[0.32,0.40],[0.45,0.29]], [[0.47,0.41],[0.50,0.41]],
+    [[0.51,0.40],[0.53,0.39]], [[0.47,0.37],[0.48,0.31]], [[0.58,0.30],[0.62,0.28]],
+    [[0.64,0.29],[0.64,0.32]], [[0.18,0.90],[0.18,0.93]], [[0.43,0.75],[0.44,0.72]],
+    [[0.43,0.78],[0.43,0.80]], [[0.44,0.84],[0.49,0.81]], [[0.55,0.90],[0.55,0.92]],
+    [[0.52,0.93],[0.46,0.93]], [[0.58,0.85],[0.62,0.82]], [[0.70,0.89],[0.76,0.87]],
+    [[0.71,0.91],[0.73,0.97]], [[0.88,0.93],[0.90,0.96]]
+  ];
+
+  const WORLD_CITIES = [
+    { name: 'New York', u: 0.275, v: 0.375, major: true },
+    { name: 'Washington', u: 0.262, v: 0.398, major: true },
+    { name: 'Los Angeles', u: 0.148, v: 0.418, major: true },
+    { name: 'Mexico City', u: 0.195, v: 0.512, major: true },
+    { name: 'Brasilia', u: 0.342, v: 0.688, major: true },
+    { name: 'Buenos Aires', u: 0.318, v: 0.802, major: true },
+    { name: 'London', u: 0.476, v: 0.315, major: true },
+    { name: 'Paris', u: 0.486, v: 0.338, major: true },
+    { name: 'Berlin', u: 0.514, v: 0.312, major: true },
+    { name: 'Moscow', u: 0.582, v: 0.288, major: true },
+    { name: 'Cairo', u: 0.558, v: 0.458, major: true },
+    { name: 'Istanbul', u: 0.556, v: 0.388, major: true },
+    { name: 'Delhi', u: 0.692, v: 0.468, major: true },
+    { name: 'Beijing', u: 0.788, v: 0.382, major: true },
+    { name: 'Tokyo', u: 0.858, v: 0.405, major: true },
+    { name: 'Sydney', u: 0.878, v: 0.785, major: true }
+  ];
+
+  const WORLD_SEA_BRIDGES = [
+    [[0.46,0.32],[0.48,0.33]], [[0.48,0.38],[0.48,0.40]], [[0.76,0.46],[0.78,0.52]],
+    [[0.80,0.58],[0.83,0.68]], [[0.82,0.39],[0.85,0.40]], [[0.32,0.22],[0.38,0.20]]
+  ];
+
+  // Historical Era Templates (base fallback + capital positions & real armies in thousands)
+  const EUROPE_ERAS = {
+    2026: [
+      { name: 'Russia', color: '#15803d', ideo: 'authoritarian', doc: 'deep_op', u: 0.816, v: 0.402, armyK: 1320,
+        polys: [[[0.66,0.02],[0.99,0.02],[0.99,0.78],[0.85,0.74],[0.82,0.64],[0.79,0.53],[0.74,0.45],[0.69,0.35],[0.66,0.22]], [[0.562,0.452],[0.592,0.452],[0.592,0.474],[0.562,0.474]]] },
+      { name: 'Ukraine', color: '#eab308', ideo: 'democracy', doc: 'network', u: 0.742, v: 0.538, armyK: 880,
+        polys: [[[0.66,0.49],[0.75,0.49],[0.82,0.53],[0.83,0.63],[0.77,0.68],[0.71,0.66],[0.66,0.59]]] },
+      { name: 'Belarus', color: '#16a34a', ideo: 'authoritarian', doc: 'deep_op', u: 0.706, v: 0.448, armyK: 140,
+        polys: [[[0.65,0.41],[0.74,0.41],[0.75,0.49],[0.65,0.49]]] },
+      { name: 'Germany', color: '#475569', ideo: 'democracy', doc: 'network', u: 0.515, v: 0.486, armyK: 260,
+        polys: [[[0.43,0.43],[0.53,0.43],[0.54,0.53],[0.50,0.61],[0.44,0.61],[0.42,0.52]]] },
+      { name: 'France', color: '#2563eb', ideo: 'democracy', doc: 'network', u: 0.356, v: 0.578, armyK: 290,
+        polys: [[[0.26,0.53],[0.42,0.53],[0.43,0.64],[0.42,0.75],[0.29,0.74],[0.27,0.63]]] },
+      { name: 'United Kingdom', color: '#dc2626', ideo: 'democracy', doc: 'network', u: 0.312, v: 0.502, armyK: 230,
+        polys: [[[0.24,0.27],[0.35,0.27],[0.35,0.55],[0.24,0.55]]] },
+      { name: 'Ireland', color: '#22c55e', ideo: 'democracy', doc: 'network', u: 0.232, v: 0.432, armyK: 45,
+        polys: [[[0.18,0.37],[0.25,0.37],[0.25,0.49],[0.18,0.49]]] },
+      { name: 'Iceland', color: '#38bdf8', ideo: 'democracy', doc: 'network', u: 0.180, v: 0.098, armyK: 20,
+        polys: [[[0.12,0.04],[0.26,0.04],[0.26,0.16],[0.12,0.16]]] },
+      { name: 'Poland', color: '#ec4899', ideo: 'democracy', doc: 'network', u: 0.604, v: 0.502, armyK: 280,
+        polys: [[[0.53,0.45],[0.65,0.45],[0.66,0.57],[0.54,0.56]]] },
+      { name: 'Italy', color: '#10b981', ideo: 'democracy', doc: 'network', u: 0.492, v: 0.788, armyK: 240,
+        polys: [[[0.42,0.64],[0.52,0.64],[0.58,0.82],[0.56,0.96],[0.41,0.92]]] },
+      { name: 'Spain', color: '#f59e0b', ideo: 'democracy', doc: 'network', u: 0.212, v: 0.822, armyK: 190,
+        polys: [[[0.15,0.72],[0.33,0.73],[0.31,0.91],[0.15,0.91]]] },
+      { name: 'Portugal', color: '#059669', ideo: 'democracy', doc: 'network', u: 0.142, v: 0.855, armyK: 65,
+        polys: [[[0.11,0.74],[0.16,0.74],[0.16,0.90],[0.11,0.90]]] },
+      { name: 'Turkey', color: '#e11d48', ideo: 'authoritarian', doc: 'network', u: 0.848, v: 0.838, armyK: 520,
+        polys: [[[0.73,0.78],[0.95,0.78],[0.96,0.96],[0.73,0.94]]] },
+      { name: 'Sweden', color: '#0284c7', ideo: 'democracy', doc: 'network', u: 0.562, v: 0.315, armyK: 110,
+        polys: [[[0.50,0.08],[0.61,0.08],[0.58,0.41],[0.50,0.41]]] },
+      { name: 'Norway', color: '#be123c', ideo: 'democracy', doc: 'network', u: 0.482, v: 0.292, armyK: 95,
+        polys: [[[0.41,0.03],[0.64,0.03],[0.50,0.34],[0.41,0.34]]] },
+      { name: 'Finland', color: '#e2e8f0', ideo: 'democracy', doc: 'network', u: 0.642, v: 0.285, armyK: 280,
+        polys: [[[0.59,0.08],[0.68,0.08],[0.69,0.30],[0.59,0.30]]] },
+      { name: 'Denmark', color: '#fb7185', ideo: 'democracy', doc: 'network', u: 0.498, v: 0.408, armyK: 55,
+        polys: [[[0.45,0.36],[0.52,0.36],[0.52,0.44],[0.45,0.44]]] },
+      { name: 'Estonia', color: '#0ea5e9', ideo: 'democracy', doc: 'network', u: 0.644, v: 0.322, armyK: 45,
+        polys: [[[0.61,0.30],[0.68,0.30],[0.68,0.35],[0.61,0.35]]] },
+      { name: 'Latvia', color: '#991b1b', ideo: 'democracy', doc: 'network', u: 0.646, v: 0.376, armyK: 45,
+        polys: [[[0.61,0.35],[0.68,0.35],[0.68,0.40],[0.61,0.40]]] },
+      { name: 'Lithuania', color: '#65a30d', ideo: 'democracy', doc: 'network', u: 0.662, v: 0.432, armyK: 50,
+        polys: [[[0.61,0.40],[0.67,0.40],[0.67,0.45],[0.61,0.45]]] },
+      { name: 'Czechia', color: '#06b6d4', ideo: 'democracy', doc: 'network', u: 0.528, v: 0.556, armyK: 75,
+        polys: [[[0.49,0.53],[0.56,0.53],[0.56,0.58],[0.49,0.58]]] },
+      { name: 'Slovakia', color: '#38bdf8', ideo: 'democracy', doc: 'network', u: 0.578, v: 0.582, armyK: 55,
+        polys: [[[0.56,0.55],[0.63,0.55],[0.63,0.60],[0.56,0.60]]] },
+      { name: 'Austria', color: '#f43f5e', ideo: 'neutral', doc: 'network', u: 0.556, v: 0.608, armyK: 65,
+        polys: [[[0.47,0.58],[0.56,0.58],[0.56,0.63],[0.47,0.63]]] },
+      { name: 'Hungary', color: '#d97706', ideo: 'authoritarian', doc: 'network', u: 0.602, v: 0.635, armyK: 80,
+        polys: [[[0.56,0.60],[0.64,0.60],[0.64,0.66],[0.56,0.66]]] },
+      { name: 'Romania', color: '#ca8a04', ideo: 'democracy', doc: 'network', u: 0.702, v: 0.722, armyK: 140,
+        polys: [[[0.63,0.63],[0.73,0.63],[0.73,0.74],[0.63,0.74]]] },
+      { name: 'Moldova', color: '#facc15', ideo: 'democracy', doc: 'network', u: 0.728, v: 0.625, armyK: 35,
+        polys: [[[0.71,0.59],[0.74,0.59],[0.74,0.65],[0.71,0.65]]] },
+      { name: 'Bulgaria', color: '#4d7c0f', ideo: 'democracy', doc: 'network', u: 0.668, v: 0.768, armyK: 85,
+        polys: [[[0.63,0.74],[0.73,0.74],[0.73,0.80],[0.63,0.80]]] },
+      { name: 'Serbia & Montenegro', color: '#7c3aed', ideo: 'neutral', doc: 'network', u: 0.618, v: 0.706, armyK: 95,
+        polys: [[[0.58,0.66],[0.63,0.66],[0.63,0.77],[0.58,0.77]]] },
+      { name: 'Croatia', color: '#6366f1', ideo: 'democracy', doc: 'network', u: 0.554, v: 0.672, armyK: 60,
+        polys: [[[0.52,0.63],[0.58,0.63],[0.58,0.71],[0.52,0.71]]] },
+      { name: 'Bosnia', color: '#8b5cf6', ideo: 'democracy', doc: 'network', u: 0.578, v: 0.702, armyK: 45,
+        polys: [[[0.55,0.67],[0.59,0.67],[0.59,0.73],[0.55,0.73]]] },
+      { name: 'Albania', color: '#be185d', ideo: 'democracy', doc: 'network', u: 0.612, v: 0.802, armyK: 40,
+        polys: [[[0.59,0.76],[0.63,0.76],[0.63,0.83],[0.59,0.83]]] },
+      { name: 'North Macedonia', color: '#fb923c', ideo: 'democracy', doc: 'network', u: 0.638, v: 0.792, armyK: 35,
+        polys: [[[0.62,0.76],[0.66,0.76],[0.66,0.81],[0.62,0.81]]] },
+      { name: 'Greece', color: '#38bdf8', ideo: 'democracy', doc: 'network', u: 0.686, v: 0.882, armyK: 165,
+        polys: [[[0.62,0.80],[0.76,0.80],[0.76,0.98],[0.62,0.98]]] },
+      { name: 'Netherlands', color: '#f97316', ideo: 'democracy', doc: 'network', u: 0.408, v: 0.484, armyK: 75,
+        polys: [[[0.38,0.46],[0.43,0.46],[0.43,0.51],[0.38,0.51]]] },
+      { name: 'Belgium', color: '#facc15', ideo: 'democracy', doc: 'network', u: 0.394, v: 0.524, armyK: 65,
+        polys: [[[0.37,0.51],[0.42,0.51],[0.42,0.55],[0.37,0.55]]] },
+      { name: 'Switzerland', color: '#ef4444', ideo: 'neutral', doc: 'network', u: 0.428, v: 0.642, armyK: 140,
+        polys: [[[0.40,0.61],[0.46,0.61],[0.46,0.66],[0.40,0.66]]] },
+      { name: 'Georgia', color: '#f472b6', ideo: 'democracy', doc: 'network', u: 0.962, v: 0.795, armyK: 65,
+        polys: [[[0.91,0.75],[0.99,0.75],[0.99,0.83],[0.91,0.83]]] },
+      { name: 'Armenia', color: '#fb7185', ideo: 'democracy', doc: 'network', u: 0.968, v: 0.845, armyK: 55,
+        polys: [[[0.94,0.82],[0.98,0.82],[0.98,0.86],[0.94,0.86]]] },
+      { name: 'Azerbaijan', color: '#2563eb', ideo: 'authoritarian', doc: 'network', u: 0.985, v: 0.845, armyK: 110,
+        polys: [[[0.97,0.81],[1.00,0.81],[1.00,0.89],[0.97,0.89]]] },
+      { name: 'Morocco', color: '#b91c1c', ideo: 'monarchy', doc: 'network', u: 0.145, v: 0.965, armyK: 210,
+        polys: [[[0.02,0.90],[0.24,0.90],[0.24,1.00],[0.02,1.00]]] },
+      { name: 'Algeria', color: '#15803d', ideo: 'authoritarian', doc: 'network', u: 0.308, v: 0.942, armyK: 280,
+        polys: [[[0.24,0.90],[0.42,0.90],[0.42,1.00],[0.24,1.00]]] },
+      { name: 'Tunisia', color: '#dc2626', ideo: 'democracy', doc: 'network', u: 0.452, v: 0.935, armyK: 85,
+        polys: [[[0.42,0.90],[0.52,0.90],[0.52,1.00],[0.42,1.00]]] }
+    ],
+    1936: [
+      { name: 'Germany', color: '#4b5563', ideo: 'authoritarian', doc: 'blitzkrieg', u: 0.515, v: 0.486, armyK: 950,
+        polys: [[[0.43,0.43],[0.56,0.43],[0.56,0.53],[0.48,0.61],[0.44,0.61],[0.42,0.52]], [[0.58,0.43],[0.62,0.43],[0.62,0.47],[0.58,0.47]]] },
+      { name: 'Soviet Union', color: '#b91c1c', ideo: 'communism', doc: 'deep_op', u: 0.816, v: 0.402, armyK: 1650,
+        polys: [[[0.67,0.02],[0.99,0.02],[0.99,0.86],[0.88,0.78],[0.76,0.65],[0.71,0.54],[0.68,0.42],[0.69,0.28]]] },
+      { name: 'France', color: '#2563eb', ideo: 'democracy', doc: 'trench', u: 0.356, v: 0.578, armyK: 820,
+        polys: [[[0.26,0.53],[0.43,0.53],[0.43,0.75],[0.28,0.74]]] },
+      { name: 'United Kingdom', color: '#dc2626', ideo: 'democracy', doc: 'deep_op', u: 0.312, v: 0.502, armyK: 480,
+        polys: [[[0.24,0.27],[0.35,0.27],[0.35,0.55],[0.24,0.55]]] },
+      { name: 'Ireland', color: '#22c55e', ideo: 'democracy', doc: 'trench', u: 0.232, v: 0.432, armyK: 45,
+        polys: [[[0.18,0.37],[0.25,0.37],[0.25,0.49],[0.18,0.49]]] },
+      { name: 'Italy', color: '#16a34a', ideo: 'authoritarian', doc: 'blitzkrieg', u: 0.492, v: 0.788, armyK: 740,
+        polys: [[[0.42,0.64],[0.54,0.64],[0.58,0.82],[0.56,0.96],[0.41,0.92]]] },
+      { name: 'Poland', color: '#ec4899', ideo: 'neutral', doc: 'trench', u: 0.604, v: 0.502, armyK: 680,
+        polys: [[[0.55,0.44],[0.69,0.42],[0.71,0.57],[0.57,0.56]]] },
+      { name: 'Spain', color: '#eab308', ideo: 'authoritarian', doc: 'trench', u: 0.212, v: 0.822, armyK: 420,
+        polys: [[[0.15,0.72],[0.33,0.73],[0.31,0.91],[0.15,0.91]]] },
+      { name: 'Portugal', color: '#059669', ideo: 'authoritarian', doc: 'trench', u: 0.142, v: 0.855, armyK: 85,
+        polys: [[[0.11,0.74],[0.16,0.74],[0.16,0.90],[0.11,0.90]]] },
+      { name: 'Turkey', color: '#e11d48', ideo: 'neutral', doc: 'trench', u: 0.848, v: 0.838, armyK: 440,
+        polys: [[[0.73,0.78],[0.95,0.78],[0.96,0.96],[0.73,0.94]]] },
+      { name: 'Czechoslovakia', color: '#06b6d4', ideo: 'democracy', doc: 'trench', u: 0.528, v: 0.556, armyK: 340,
+        polys: [[[0.49,0.53],[0.63,0.55],[0.63,0.60],[0.49,0.58]]] },
+      { name: 'Austria', color: '#f43f5e', ideo: 'authoritarian', doc: 'trench', u: 0.556, v: 0.608, armyK: 95,
+        polys: [[[0.47,0.58],[0.56,0.58],[0.56,0.63],[0.47,0.63]]] },
+      { name: 'Hungary', color: '#d97706', ideo: 'authoritarian', doc: 'trench', u: 0.602, v: 0.635, armyK: 130,
+        polys: [[[0.56,0.60],[0.64,0.60],[0.64,0.66],[0.56,0.66]]] },
+      { name: 'Yugoslavia', color: '#7c3aed', ideo: 'monarchy', doc: 'trench', u: 0.618, v: 0.706, armyK: 310,
+        polys: [[[0.52,0.63],[0.63,0.65],[0.65,0.78],[0.54,0.76]]] },
+      { name: 'Romania', color: '#ca8a04', ideo: 'monarchy', doc: 'trench', u: 0.702, v: 0.722, armyK: 360,
+        polys: [[[0.63,0.58],[0.74,0.58],[0.74,0.74],[0.63,0.74]]] },
+      { name: 'Bulgaria', color: '#65a30d', ideo: 'monarchy', doc: 'trench', u: 0.668, v: 0.768, armyK: 140,
+        polys: [[[0.63,0.74],[0.73,0.74],[0.73,0.80],[0.63,0.80]]] },
+      { name: 'Greece', color: '#38bdf8', ideo: 'monarchy', doc: 'trench', u: 0.686, v: 0.882, armyK: 190,
+        polys: [[[0.60,0.79],[0.76,0.79],[0.76,0.98],[0.60,0.98]]] },
+      { name: 'Finland', color: '#e2e8f0', ideo: 'democracy', doc: 'trench', u: 0.642, v: 0.285, armyK: 260,
+        polys: [[[0.59,0.07],[0.70,0.07],[0.70,0.30],[0.59,0.30]]] },
+      { name: 'Sweden', color: '#0284c7', ideo: 'neutral', doc: 'trench', u: 0.562, v: 0.315, armyK: 130,
+        polys: [[[0.50,0.08],[0.61,0.08],[0.58,0.41],[0.50,0.41]]] },
+      { name: 'Norway', color: '#be123c', ideo: 'democracy', doc: 'trench', u: 0.482, v: 0.292, armyK: 90,
+        polys: [[[0.41,0.03],[0.64,0.03],[0.50,0.34],[0.41,0.34]]] },
+      { name: 'Denmark', color: '#fb7185', ideo: 'democracy', doc: 'trench', u: 0.498, v: 0.408, armyK: 60,
+        polys: [[[0.12,0.04],[0.26,0.04],[0.26,0.16],[0.12,0.16]], [[0.45,0.36],[0.52,0.36],[0.52,0.44],[0.45,0.44]]] },
+      { name: 'Baltic States', color: '#8b5cf6', ideo: 'neutral', doc: 'trench', u: 0.646, v: 0.376, armyK: 145,
+        polys: [[[0.61,0.30],[0.68,0.30],[0.68,0.43],[0.61,0.43]]] },
+      { name: 'Benelux', color: '#f97316', ideo: 'democracy', doc: 'trench', u: 0.408, v: 0.484, armyK: 150,
+        polys: [[[0.37,0.46],[0.43,0.46],[0.43,0.55],[0.37,0.55]]] },
+      { name: 'Switzerland', color: '#ef4444', ideo: 'neutral', doc: 'trench', u: 0.428, v: 0.642, armyK: 160,
+        polys: [[[0.40,0.61],[0.46,0.61],[0.46,0.66],[0.40,0.66]]] },
+      { name: 'French North Africa', color: '#1d4ed8', ideo: 'democracy', doc: 'trench', u: 0.308, v: 0.942, armyK: 220,
+        polys: [[[0.02,0.90],[0.52,0.90],[0.52,1.00],[0.02,1.00]]] }
+    ],
+    1900: [
+      { name: 'German Empire', color: '#475569', ideo: 'monarchy', doc: 'trench', u: 0.515, v: 0.486, armyK: 1150,
+        polys: [[[0.42,0.42],[0.61,0.42],[0.61,0.54],[0.49,0.61],[0.43,0.61],[0.41,0.52]]] },
+      { name: 'French Republic', color: '#2563eb', ideo: 'democracy', doc: 'trench', u: 0.356, v: 0.578, armyK: 960,
+        polys: [[[0.26,0.53],[0.42,0.53],[0.42,0.75],[0.28,0.74]], [[0.20,0.90],[0.52,0.90],[0.52,1.00],[0.20,1.00]]] },
+      { name: 'British Empire', color: '#dc2626', ideo: 'monarchy', doc: 'trench', u: 0.312, v: 0.502, armyK: 680,
+        polys: [[[0.18,0.27],[0.35,0.27],[0.35,0.55],[0.18,0.55]]] },
+      { name: 'Russian Empire', color: '#15803d', ideo: 'monarchy', doc: 'trench', u: 0.816, v: 0.402, armyK: 1580,
+        polys: [[[0.59,0.02],[0.99,0.02],[0.99,0.86],[0.88,0.78],[0.73,0.60],[0.61,0.53],[0.60,0.32]]] },
+      { name: 'Austria-Hungary', color: '#eab308', ideo: 'monarchy', doc: 'trench', u: 0.556, v: 0.608, armyK: 880,
+        polys: [[[0.47,0.54],[0.68,0.54],[0.68,0.68],[0.53,0.69],[0.47,0.63]]] },
+      { name: 'Kingdom of Italy', color: '#16a34a', ideo: 'monarchy', doc: 'trench', u: 0.492, v: 0.788, armyK: 560,
+        polys: [[[0.42,0.64],[0.53,0.64],[0.58,0.82],[0.56,0.96],[0.41,0.92]]] },
+      { name: 'Ottoman Empire', color: '#0d9488', ideo: 'monarchy', doc: 'trench', u: 0.848, v: 0.838, armyK: 620,
+        polys: [[[0.58,0.74],[0.96,0.74],[0.96,0.96],[0.62,0.85]]] },
+      { name: 'Spain', color: '#f59e0b', ideo: 'monarchy', doc: 'trench', u: 0.212, v: 0.822, armyK: 310,
+        polys: [[[0.15,0.72],[0.33,0.73],[0.31,0.91],[0.15,0.91]]] },
+      { name: 'Portugal', color: '#059669', ideo: 'monarchy', doc: 'trench', u: 0.142, v: 0.855, armyK: 85,
+        polys: [[[0.11,0.74],[0.16,0.74],[0.16,0.90],[0.11,0.90]]] },
+      { name: 'Sweden-Norway', color: '#0284c7', ideo: 'monarchy', doc: 'trench', u: 0.562, v: 0.315, armyK: 210,
+        polys: [[[0.41,0.03],[0.64,0.03],[0.58,0.41],[0.41,0.41]]] },
+      { name: 'Denmark', color: '#e11d48', ideo: 'monarchy', doc: 'trench', u: 0.498, v: 0.408, armyK: 65,
+        polys: [[[0.12,0.04],[0.26,0.04],[0.26,0.16],[0.12,0.16]], [[0.45,0.36],[0.52,0.36],[0.52,0.44],[0.45,0.44]]] },
+      { name: 'Benelux', color: '#f97316', ideo: 'monarchy', doc: 'trench', u: 0.408, v: 0.484, armyK: 130,
+        polys: [[[0.37,0.46],[0.43,0.46],[0.43,0.55],[0.37,0.55]]] },
+      { name: 'Switzerland', color: '#ef4444', ideo: 'neutral', doc: 'trench', u: 0.428, v: 0.642, armyK: 140,
+        polys: [[[0.40,0.61],[0.46,0.61],[0.46,0.66],[0.40,0.66]]] },
+      { name: 'Serbia', color: '#7c3aed', ideo: 'monarchy', doc: 'trench', u: 0.618, v: 0.706, armyK: 145,
+        polys: [[[0.58,0.68],[0.64,0.68],[0.64,0.76],[0.58,0.76]]] },
+      { name: 'Romania', color: '#ca8a04', ideo: 'monarchy', doc: 'trench', u: 0.702, v: 0.722, armyK: 195,
+        polys: [[[0.64,0.65],[0.74,0.65],[0.74,0.74],[0.64,0.74]]] },
+      { name: 'Bulgaria', color: '#65a30d', ideo: 'monarchy', doc: 'trench', u: 0.668, v: 0.768, armyK: 165,
+        polys: [[[0.63,0.73],[0.73,0.73],[0.73,0.78],[0.63,0.78]]] },
+      { name: 'Greece', color: '#38bdf8', ideo: 'monarchy', doc: 'trench', u: 0.686, v: 0.882, armyK: 140,
+        polys: [[[0.62,0.83],[0.76,0.83],[0.76,0.98],[0.62,0.98]]] },
+      { name: 'Morocco', color: '#b45309', ideo: 'monarchy', doc: 'trench', u: 0.145, v: 0.965, armyK: 120,
+        polys: [[[0.02,0.90],[0.20,0.90],[0.20,1.00],[0.02,1.00]]] }
+    ],
+    1800: [
+      { name: 'French Republic', color: '#2563eb', ideo: 'authoritarian', doc: 'napoleon', u: 0.356, v: 0.578, armyK: 860,
+        polys: [[[0.26,0.48],[0.45,0.48],[0.46,0.68],[0.28,0.74]]] },
+      { name: 'British Empire', color: '#dc2626', ideo: 'monarchy', doc: 'napoleon', u: 0.312, v: 0.502, armyK: 520,
+        polys: [[[0.18,0.27],[0.35,0.27],[0.35,0.55],[0.18,0.55]]] },
+      { name: 'Russian Empire', color: '#15803d', ideo: 'monarchy', doc: 'napoleon', u: 0.816, v: 0.402, armyK: 940,
+        polys: [[[0.63,0.02],[0.99,0.02],[0.99,0.86],[0.88,0.78],[0.72,0.62],[0.63,0.48],[0.64,0.30]]] },
+      { name: 'Habsburg Empire', color: '#eab308', ideo: 'monarchy', doc: 'napoleon', u: 0.556, v: 0.608, armyK: 640,
+        polys: [[[0.46,0.52],[0.68,0.52],[0.68,0.69],[0.46,0.69]]] },
+      { name: 'Kingdom of Prussia', color: '#475569', ideo: 'monarchy', doc: 'napoleon', u: 0.515, v: 0.486, armyK: 480,
+        polys: [[[0.44,0.42],[0.63,0.42],[0.63,0.53],[0.44,0.53]]] },
+      { name: 'Spanish Empire', color: '#f59e0b', ideo: 'monarchy', doc: 'napoleon', u: 0.212, v: 0.822, armyK: 340,
+        polys: [[[0.15,0.72],[0.33,0.73],[0.31,0.91],[0.15,0.91]]] },
+      { name: 'Portugal', color: '#059669', ideo: 'monarchy', doc: 'napoleon', u: 0.142, v: 0.855, armyK: 95,
+        polys: [[[0.11,0.74],[0.16,0.74],[0.16,0.90],[0.11,0.90]]] },
+      { name: 'Ottoman Empire', color: '#0d9488', ideo: 'monarchy', doc: 'napoleon', u: 0.848, v: 0.838, armyK: 680,
+        polys: [[[0.56,0.69],[0.96,0.69],[0.96,0.98],[0.58,0.98]], [[0.20,0.90],[0.52,0.90],[0.52,1.00],[0.20,1.00]]] },
+      { name: 'Kingdom of Sweden', color: '#0284c7', ideo: 'monarchy', doc: 'napoleon', u: 0.562, v: 0.315, armyK: 220,
+        polys: [[[0.50,0.06],[0.68,0.06],[0.68,0.41],[0.50,0.41]]] },
+      { name: 'Denmark-Norway', color: '#e11d48', ideo: 'monarchy', doc: 'napoleon', u: 0.498, v: 0.408, armyK: 170,
+        polys: [[[0.12,0.04],[0.26,0.04],[0.26,0.16],[0.12,0.16]], [[0.41,0.03],[0.53,0.03],[0.52,0.44],[0.41,0.44]]] },
+      { name: 'Italian States', color: '#65a30d', ideo: 'monarchy', doc: 'napoleon', u: 0.492, v: 0.788, armyK: 240,
+        polys: [[[0.45,0.68],[0.58,0.68],[0.58,0.96],[0.41,0.92]]] },
+      { name: 'Switzerland', color: '#ef4444', ideo: 'neutral', doc: 'napoleon', u: 0.428, v: 0.642, armyK: 90,
+        polys: [[[0.40,0.61],[0.46,0.61],[0.46,0.66],[0.40,0.66]]] },
+      { name: 'Morocco', color: '#b45309', ideo: 'monarchy', doc: 'napoleon', u: 0.145, v: 0.965, armyK: 110,
+        polys: [[[0.02,0.90],[0.20,0.90],[0.20,1.00],[0.02,1.00]]] }
+    ]
+  };
+
+  const WORLD_NATIONS = [
+    { name: 'United States', color: '#2563eb', ideo: 'democracy', doc: 'network', u: 0.21, v: 0.39, armyK: 1380, polys: [[[0.08,0.28],[0.31,0.28],[0.31,0.46],[0.08,0.46]]] },
+    { name: 'Canada', color: '#dc2626', ideo: 'democracy', doc: 'network', u: 0.21, v: 0.22, armyK: 120, polys: [[[0.06,0.10],[0.35,0.10],[0.35,0.28],[0.06,0.28]]] },
+    { name: 'Mexico', color: '#16a34a', ideo: 'democracy', doc: 'network', u: 0.19, v: 0.51, armyK: 280, polys: [[[0.13,0.46],[0.28,0.46],[0.28,0.58],[0.13,0.58]]] },
+    { name: 'Brazil', color: '#15803d', ideo: 'democracy', doc: 'network', u: 0.34, v: 0.68, armyK: 360, polys: [[[0.27,0.58],[0.41,0.58],[0.41,0.75],[0.27,0.75]]] },
+    { name: 'Argentina', color: '#38bdf8', ideo: 'democracy', doc: 'network', u: 0.31, v: 0.80, armyK: 140, polys: [[[0.26,0.75],[0.36,0.75],[0.36,0.92],[0.26,0.92]]] },
+    { name: 'Western Europe', color: '#3b82f6', ideo: 'democracy', doc: 'network', u: 0.49, v: 0.33, armyK: 950, polys: [[[0.44,0.22],[0.54,0.22],[0.54,0.39],[0.44,0.39]]] },
+    { name: 'Russia', color: '#166534', ideo: 'authoritarian', doc: 'deep_op', u: 0.66, v: 0.25, armyK: 1350, polys: [[[0.54,0.12],[0.94,0.12],[0.94,0.34],[0.54,0.34]]] },
+    { name: 'Middle East', color: '#d97706', ideo: 'monarchy', doc: 'network', u: 0.58, v: 0.44, armyK: 820, polys: [[[0.53,0.39],[0.64,0.39],[0.64,0.52],[0.53,0.52]]] },
+    { name: 'North Africa', color: '#ca8a04', ideo: 'authoritarian', doc: 'network', u: 0.50, v: 0.47, armyK: 640, polys: [[[0.43,0.40],[0.53,0.40],[0.53,0.56],[0.43,0.56]]] },
+    { name: 'South Africa', color: '#eab308', ideo: 'democracy', doc: 'network', u: 0.53, v: 0.72, armyK: 290, polys: [[[0.46,0.56],[0.60,0.56],[0.60,0.85],[0.46,0.85]]] },
+    { name: 'India', color: '#f97316', ideo: 'democracy', doc: 'network', u: 0.69, v: 0.47, armyK: 1450, polys: [[[0.64,0.41],[0.74,0.41],[0.74,0.56],[0.64,0.56]]] },
+    { name: 'China', color: '#ef4444', ideo: 'communism', doc: 'deep_op', u: 0.77, v: 0.40, armyK: 2050, polys: [[[0.65,0.34],[0.83,0.34],[0.83,0.48],[0.65,0.48]]] },
+    { name: 'Japan', color: '#ec4899', ideo: 'democracy', doc: 'network', u: 0.86, v: 0.40, armyK: 260, polys: [[[0.83,0.35],[0.90,0.35],[0.90,0.45],[0.83,0.45]]] },
+    { name: 'Southeast Asia', color: '#14b8a6', ideo: 'neutral', doc: 'network', u: 0.79, v: 0.56, armyK: 540, polys: [[[0.74,0.48],[0.86,0.48],[0.86,0.65],[0.74,0.65]]] },
+    { name: 'Australia', color: '#8b5cf6', ideo: 'democracy', doc: 'network', u: 0.86, v: 0.76, armyK: 140, polys: [[[0.80,0.67],[0.96,0.67],[0.96,0.88],[0.80,0.88]]] }
+  ];
+
+  // ==========================================================================
+  // 4. HIGH-DENSITY TYPED BUFFERS, DIVISIONS & FRONTLINE RENDER DATA
+  // ==========================================================================
+  const mainCanvas = document.getElementById('mapCanvas');
+  const ctx = mainCanvas.getContext('2d', { alpha: false });
+
+  const satCanvas = document.createElement('canvas');
+  satCanvas.width = GRID_W; satCanvas.height = GRID_H;
+  const satCtx = satCanvas.getContext('2d');
+
+  const polCanvas = document.createElement('canvas');
+  polCanvas.width = GRID_W; polCanvas.height = GRID_H;
+  const polCtx = polCanvas.getContext('2d');
+  const polImgData = polCtx.createImageData(GRID_W, GRID_H);
+  const polPixels = polImgData.data;
+
+  const landMask = new Uint8Array(TOTAL_PX);
+  const provGrid = new Int32Array(TOTAL_PX);
+  const elevGrid = new Float32Array(TOTAL_PX);
+
+  let provCount = 0;
+  const provCx = new Float32Array(MAX_PROVS);
+  const provCy = new Float32Array(MAX_PROVS);
+  const provArea = new Int32Array(MAX_PROVS);
+  const provOwner = new Int16Array(MAX_PROVS);
+  // Flags: 1=coastal, 2=capital, 4=encircled, 8=mountain
+  const provFlags = new Uint8Array(MAX_PROVS);
+  const provCityIdx = new Int16Array(MAX_PROVS);
+
+  let provNbOffset = new Int32Array(MAX_PROVS + 1);
+  let provNbData = new Int32Array(1);
+  let provSeaSet = new Set();
+
+  const supplyVisited = new Uint8Array(MAX_PROVS);
+  const supplyQueue = new Int32Array(MAX_PROVS);
+
+  let activeMapType = 'europe';
+  let activeCities = EUROPE_CITIES;
+  let activeBridges = EUROPE_SEA_BRIDGES;
+  let customSatelliteImg = null;
+  let cachedGeoJson = null;
+
+  let nations = [];
+  let divisions = [];      // Discrete major armies / corps: { id, owner, provId, x, y, troopsK, name, targetProvId }
+  let frontlineGroups = []; // Clustered frontline numbers + curved arrows: { owner, x, y, angle, troopsK, arrows: [{x1,y1,cx,cy,x2,y2}] }
+  let attacks = [];
+  let eventLog = [];
+
+  let gameMode = 'god';
+  let playerNationId = -1;
+  let playerAutoFront = true;
+  let globalAiEnabled = true;
+  let currentEra = 2026;
+  let mapMode = 'satellite';
+  let simSpeed = 1;
+  let simTick = 0;
+  let startYear = 2026;
+  let polDirty = true;
+
+  let currentTool = 'inspect';
+  let brushRadius = 14;
+  let isPaintingBrush = false;
+  let selectedNationId = -1;
+  let selectedDivId = -1;
+  let selectedProvId = -1;
+  let hoveredProvId = -1;
+  let actionFirstNationId = -1;
+
+  const cam = { x: 0, y: 0, scale: 0.85, minScale: 0.35, maxScale: 8.5 };
+  let isDragging = false, dragMoved = false, dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
+  let lastPinchDist = 0;
+
+  // ==========================================================================
+  // 5. MATH, FORMATTING & DOMAIN-WARPED POLYGON HELPERS
+  // ==========================================================================
+  function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function hash2(x, y) {
+    let n = Math.imul(x, 374761393) + Math.imul(y, 668265263);
+    n = (n ^ (n >>> 13)) * 1274126177;
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+  }
+
+  function valueNoise(x, y) {
+    const ix = Math.floor(x), iy = Math.floor(y);
+    const fx = x - ix, fy = y - iy;
+    const ux = fx * fx * (3 - 2 * fx);
+    const uy = fy * fy * (3 - 2 * fy);
+    const a = hash2(ix, iy), b = hash2(ix + 1, iy);
+    const c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1);
+    return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+  }
+
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(v => clamp(v | 0, 0, 255).toString(16).padStart(2, '0')).join('');
+  }
+  function hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return rgbToHex(f(0) * 255, f(8) * 255, f(4) * 255);
+  }
+
+  function formatK(k) {
+    if (k >= 1000) return (k / 1000).toFixed(2) + 'M';
+    return Math.round(k) + 'k';
+  }
+
+  // Exact soldier count formatted with dots like 2.572.244
+  function formatSoldiersDots(k) {
+    const exact = Math.max(1000, Math.round(k * 1000));
+    return exact.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  function getCurrentYear() { return startYear + Math.floor(simTick / 96); }
+  function getDateStr() {
+    const totalM = Math.floor(simTick / 8);
+    const mArr = settings.lang === 'ru' ? MONTHS_RU : MONTHS_EN;
+    return `${startYear + Math.floor(totalM / 12)}, ${mArr[totalM % 12]}`;
+  }
+
+  function pointInPoly(u, v, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], yi = poly[i][1];
+      const xj = poly[j][0], yj = poly[j][1];
+      const intersect = ((yi > v) !== (yj > v)) && (u < (xj - xi) * (v - yi) / (yj - yi + 1e-12) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Organic domain-warped check so fallback era polygons bend naturally instead of looking boxy
+  function pointInOrganicPoly(u, v, poly) {
+    const wu = u + (valueNoise(u * 18, v * 18) - 0.5) * 0.022 + (valueNoise(u * 46, v * 46) - 0.5) * 0.008;
+    const wv = v + (valueNoise(u * 18 + 13.7, v * 18 + 9.2) - 0.5) * 0.022 + (valueNoise(u * 46 + 4.1, v * 46 + 8.3) - 0.5) * 0.008;
+    return pointInPoly(wu, wv, poly);
+  }
+
+  // ==========================================================================
+  // 6. SATELLITE MAP SCANNER (GITHUB PHOTO + FALLBACK GENERATOR)
+  // ==========================================================================
+  function loadExternalImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = normalizeImageUrl(url);
+    });
+  }
+
+  function scanImageToLandMask(img) {
+    satCtx.clearRect(0, 0, GRID_W, GRID_H);
+    satCtx.drawImage(img, 0, 0, GRID_W, GRID_H);
+    const data = satCtx.getImageData(0, 0, GRID_W, GRID_H).data;
+    const thresh = settings.waterThresh;
+
+    for (let i = 0; i < TOTAL_PX; i++) {
+      const p = i * 4;
+      const r = data[p], g = data[p + 1], b = data[p + 2];
+      const isWater = (b - r > thresh && b > g - 4) || (b > 95 && b > r + 16 && b > g + 6);
+      landMask[i] = isWater ? 0 : 1;
+      elevGrid[i] = isWater ? 0 : clamp((r + g + b) / 765, 0.1, 1.0);
+    }
+  }
+
+  function generateFallbackSatellite(mapType) {
+    const mCanvas = document.createElement('canvas');
+    mCanvas.width = GRID_W; mCanvas.height = GRID_H;
+    const mc = mCanvas.getContext('2d');
+    mc.fillStyle = '#000'; mc.fillRect(0, 0, GRID_W, GRID_H);
+    mc.fillStyle = '#fff';
+
+    const drawPoly = (pts) => {
+      mc.beginPath();
+      for (let i = 0; i < pts.length; i++) {
+        const px = pts[i][0] * GRID_W, py = pts[i][1] * GRID_H;
+        if (i === 0) mc.moveTo(px, py); else mc.lineTo(px, py);
+      }
+      mc.closePath(); mc.fill();
+    };
+
+    if (mapType === 'europe') {
+      drawPoly([[0.12,0.06],[0.24,0.05],[0.25,0.12],[0.15,0.13]]); // Iceland
+      drawPoly([[0.19,0.39],[0.24,0.38],[0.23,0.48],[0.18,0.47]]); // Ireland
+      drawPoly([[0.25,0.29],[0.31,0.28],[0.34,0.52],[0.24,0.54],[0.27,0.42]]); // Britain
+      drawPoly([[0.02,0.92],[0.50,0.91],[0.52,1.00],[0.02,1.00]]); // North Africa
+      drawPoly([
+        [0.12,0.74],[0.27,0.74],[0.26,0.61],[0.35,0.56],[0.42,0.50],[0.47,0.40],[0.50,0.45],
+        [0.64,0.45],[0.65,0.31],[0.60,0.28],[0.62,0.14],[0.55,0.28],[0.47,0.34],[0.42,0.28],
+        [0.52,0.10],[0.66,0.03],[0.78,0.08],[0.85,0.02],[1.00,0.02],[1.00,0.95],[0.73,0.94],
+        [0.75,0.82],[0.94,0.80],[0.88,0.68],[0.75,0.69],[0.73,0.84],[0.65,0.94],[0.56,0.75],
+        [0.49,0.73],[0.57,0.92],[0.51,0.93],[0.44,0.76],[0.35,0.75],[0.26,0.90],[0.12,0.89]
+      ]);
+    } else {
+      drawPoly([[0.06,0.12],[0.34,0.12],[0.29,0.55],[0.16,0.52]]); // N. America
+      drawPoly([[0.27,0.57],[0.41,0.62],[0.35,0.92],[0.28,0.88]]); // S. America
+      drawPoly([[0.33,0.06],[0.44,0.06],[0.41,0.22],[0.34,0.20]]); // Greenland
+      drawPoly([[0.45,0.16],[0.60,0.15],[0.58,0.38],[0.45,0.38]]); // Europe
+      drawPoly([[0.44,0.40],[0.59,0.42],[0.56,0.83],[0.49,0.83],[0.43,0.56]]); // Africa
+      drawPoly([[0.58,0.14],[0.93,0.16],[0.86,0.60],[0.62,0.55]]); // Asia
+      drawPoly([[0.81,0.68],[0.95,0.68],[0.94,0.87],[0.81,0.86]]); // Australia
+    }
+
+    const raw = mc.getImageData(0, 0, GRID_W, GRID_H).data;
+    const satImg = satCtx.createImageData(GRID_W, GRID_H);
+    const sp = satImg.data;
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        const idx = y * GRID_W + x;
+        const p = idx * 4;
+        const isL = raw[p] > 128 ? 1 : 0;
+        landMask[idx] = isL;
+        const n = valueNoise(x * 0.025, y * 0.025);
+        if (!isL) {
+          sp[p] = (18 + n * 16) | 0; sp[p + 1] = (52 + n * 28) | 0; sp[p + 2] = (118 + n * 35) | 0; sp[p + 3] = 255;
+        } else {
+          sp[p] = (72 + n * 48) | 0; sp[p + 1] = (108 + n * 42) | 0; sp[p + 2] = (52 + n * 24) | 0; sp[p + 3] = 255;
+        }
+      }
+    }
+    satCtx.putImageData(satImg, 0, 0);
+  }
+
+  // ==========================================================================
+  // 7. ULTRA-DENSE MICRO-PROVINCE GENERATOR (10k / 100k / 1M POINTS)
+  // ==========================================================================
+  function buildUltraDenseProvinces() {
+    const targetCount = clamp(Number(settings.targetProvs) || 10000, 2000, 1000000);
+    provGrid.fill(-1);
+    provCityIdx.fill(-1);
+    provFlags.fill(0);
+    provArea.fill(0);
+    provSeaSet.clear();
+
+    const landPixels = [];
+    for (let i = 0; i < TOTAL_PX; i++) {
+      if (landMask[i]) landPixels.push(i);
+    }
+
+    if (landPixels.length === 0) {
+      generateFallbackSatellite(activeMapType);
+      for (let i = 0; i < TOTAL_PX; i++) if (landMask[i]) landPixels.push(i);
+    }
+
+    const actualSeeds = Math.min(targetCount, landPixels.length, 1000000);
+    provCount = actualSeeds;
+
+    const sumX = new Float64Array(actualSeeds);
+    const sumY = new Float64Array(actualSeeds);
+
+    let seedIdx = 0;
+    for (let c = 0; c < activeCities.length && seedIdx < actualSeeds; c++) {
+      const city = activeCities[c];
+      let gx = clamp(Math.round(city.u * GRID_W), 1, GRID_W - 2);
+      let gy = clamp(Math.round(city.v * GRID_H), 1, GRID_H - 2);
+      if (!landMask[gy * GRID_W + gx]) {
+        outer: for (let r = 1; r <= 18; r++) {
+          for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+              const nx = gx + dx, ny = gy + dy;
+              if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H && landMask[ny * GRID_W + nx]) {
+                gx = nx; gy = ny; break outer;
+              }
+            }
+          }
+        }
+      }
+      const pIdx = gy * GRID_W + gx;
+      if (provGrid[pIdx] === -1) {
+        provGrid[pIdx] = seedIdx;
+        provCityIdx[seedIdx] = c;
+        provCx[seedIdx] = gx;
+        provCy[seedIdx] = gy;
+        seedIdx++;
+      }
+    }
+
+    // Stratified jitter sampling across land pixels
+    const stride = landPixels.length / Math.max(1, (actualSeeds - seedIdx));
+    let cursor = 0;
+    while (seedIdx < actualSeeds && cursor < landPixels.length) {
+      const jitter = Math.floor(Math.random() * Math.max(1, stride * 0.85));
+      const pick = Math.min(landPixels.length - 1, Math.floor(cursor) + jitter);
+      const pIdx = landPixels[pick];
+      if (provGrid[pIdx] === -1) {
+        provGrid[pIdx] = seedIdx;
+        provCx[seedIdx] = pIdx % GRID_W;
+        provCy[seedIdx] = (pIdx / GRID_W) | 0;
+        seedIdx++;
+      }
+      cursor += stride;
+    }
+    provCount = seedIdx;
+
+    // Multi-source BFS Voronoi expansion
+    const bfsQ = new Int32Array(landPixels.length);
+    let head = 0, tail = 0;
+    for (let i = 0; i < landPixels.length; i++) {
+      const pIdx = landPixels[i];
+      if (provGrid[pIdx] !== -1) bfsQ[tail++] = pIdx;
+    }
+
+    const dxs = [1, -1, 0, 0, 1, -1, 1, -1];
+    const dys = [0, 0, 1, -1, 1, -1, -1, 1];
+    while (head < tail) {
+      const cur = bfsQ[head++];
+      const ownerProv = provGrid[cur];
+      const cx = cur % GRID_W;
+      const cy = (cur / GRID_W) | 0;
+      const dirLimit = ((cx + cy) & 1) ? 4 : 8;
+      for (let d = 0; d < dirLimit; d++) {
+        const nx = cx + dxs[d], ny = cy + dys[d];
+        if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+        const nIdx = ny * GRID_W + nx;
+        if (landMask[nIdx] && provGrid[nIdx] === -1) {
+          provGrid[nIdx] = ownerProv;
+          bfsQ[tail++] = nIdx;
+        }
+      }
+    }
+
+    for (let i = 0; i < landPixels.length; i++) {
+      const pIdx = landPixels[i];
+      const id = provGrid[pIdx];
+      if (id < 0) continue;
+      provArea[id]++;
+      sumX[id] += pIdx % GRID_W;
+      sumY[id] += (pIdx / GRID_W) | 0;
+    }
+    for (let id = 0; id < provCount; id++) {
+      if (provArea[id] > 0 && provCityIdx[id] === -1) {
+        provCx[id] = sumX[id] / provArea[id];
+        provCy[id] = sumY[id] / provArea[id];
+      }
+    }
+
+    // Flat CSR neighbor graph
+    const adjSets = Array.from({ length: provCount }, () => new Set());
+    for (let y = 1; y < GRID_H - 1; y++) {
+      const row = y * GRID_W;
+      for (let x = 1; x < GRID_W - 1; x++) {
+        const idx = row + x;
+        const id = provGrid[idx];
+        if (id < 0) continue;
+        const rId = provGrid[idx + 1];
+        const dId = provGrid[idx + GRID_W];
+        const lId = provGrid[idx - 1];
+        const uId = provGrid[idx - GRID_W];
+        if (rId < 0 || dId < 0 || lId < 0 || uId < 0) provFlags[id] |= 1;
+        if (rId >= 0 && rId !== id) { adjSets[id].add(rId); adjSets[rId].add(id); }
+        if (dId >= 0 && dId !== id) { adjSets[id].add(dId); adjSets[dId].add(id); }
+      }
+    }
+
+    for (const [p1, p2] of activeBridges) {
+      const id1 = findNearestProvUV(p1[0], p1[1]);
+      const id2 = findNearestProvUV(p2[0], p2[1]);
+      if (id1 >= 0 && id2 >= 0 && id1 !== id2) {
+        adjSets[id1].add(id2); adjSets[id2].add(id1);
+        provSeaSet.add(id1 < id2 ? `${id1}_${id2}` : `${id2}_${id1}`);
+      }
+    }
+
+    let totalEdges = 0;
+    for (let i = 0; i < provCount; i++) totalEdges += adjSets[i].size;
+    provNbOffset = new Int32Array(provCount + 1);
+    provNbData = new Int32Array(totalEdges);
+    let ptr = 0;
+    for (let i = 0; i < provCount; i++) {
+      provNbOffset[i] = ptr;
+      for (const nb of adjSets[i]) provNbData[ptr++] = nb;
+    }
+    provNbOffset[provCount] = ptr;
+
+    document.getElementById('provCountBadge').textContent = `${provCount.toLocaleString()} pts`;
+  }
+
+  function findNearestProvUV(u, v) {
+    const gx = clamp(Math.round(u * GRID_W), 0, GRID_W - 1);
+    const gy = clamp(Math.round(v * GRID_H), 0, GRID_H - 1);
+    const direct = provGrid[gy * GRID_W + gx];
+    if (direct >= 0) return direct;
+    let best = -1, bestD = Infinity;
+    for (let i = 0; i < provCount; i++) {
+      if (provArea[i] === 0) continue;
+      const d = (provCx[i] - gx) ** 2 + (provCy[i] - gy) ** 2;
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  // ==========================================================================
+  // 8. SCENARIO INITIALIZATION, GEOJSON REAL BORDERS & DIVISIONS
+  // ==========================================================================
+  function startScenario(eraKey, mode, chosenPlayerIndex = 0) {
+    currentEra = Number(eraKey);
+    gameMode = mode;
+    startYear = activeMapType === 'world' ? 2026 : currentEra;
+    simTick = 0;
+    attacks = [];
+    eventLog = [];
+    nations = [];
+    divisions = [];
+    frontlineGroups = [];
+    selectedNationId = -1;
+    selectedDivId = -1;
+    selectedProvId = -1;
+    actionFirstNationId = -1;
+    hideActionPrompt();
+
+    const templates = activeMapType === 'world'
+      ? WORLD_NATIONS
+      : (EUROPE_ERAS[currentEra] || EUROPE_ERAS[2026]);
+
+    for (let i = 0; i < templates.length; i++) {
+      const t = templates[i];
+      const capProv = findNearestProvUV(t.u, t.v);
+      nations.push({
+        id: i,
+        name: t.name,
+        hex: t.color,
+        rgb: hexToRgb(t.color),
+        ideology: t.ideo,
+        doctrine: t.doc,
+        aiEnabled: true,
+        capitalProvId: capProv,
+        alive: true,
+        gold: 320,
+        authority: 55,
+        warExhaustion: 0,
+        manpowerK: Math.round((t.armyK || 200) * 1.6),
+        provincesCount: 0,
+        citiesCount: 0,
+        totalTroops: t.armyK || 150,
+        labelX: t.u * GRID_W,
+        labelY: t.v * GRID_H,
+        enemies: new Set(),
+        allies: new Set(),
+        warStart: new Map()
+      });
+    }
+
+    provOwner.fill(-1);
+    for (let i = 0; i < provCount; i++) {
+      provFlags[i] &= ~6;
+      if (provArea[i] === 0) continue;
+      const u = provCx[i] / GRID_W;
+      const v = provCy[i] / GRID_H;
+      let assigned = -1;
+      for (let j = 0; j < templates.length; j++) {
+        const polys = templates[j].polys || [];
+        for (let p = 0; p < polys.length; p++) {
+          if (pointInOrganicPoly(u, v, polys[p])) { assigned = j; break; }
+        }
+        if (assigned !== -1) break;
+      }
+      if (assigned === -1) {
+        let bestN = 0, bestD = Infinity;
+        for (let j = 0; j < templates.length; j++) {
+          const d = (u - templates[j].u) ** 2 + (v - templates[j].v) ** 2;
+          if (d < bestD) { bestD = d; bestN = j; }
+        }
+        assigned = bestN;
+      }
+      provOwner[i] = assigned;
+    }
+
+    for (let i = 0; i < nations.length; i++) {
+      const cap = nations[i].capitalProvId;
+      if (cap >= 0) {
+        provOwner[cap] = i;
+        provFlags[cap] |= 2;
+      }
+    }
+
+    if (gameMode === 'player') {
+      playerNationId = clamp(chosenPlayerIndex, 0, nations.length - 1);
+      selectedNationId = playerNationId;
+      playerAutoFront = true;
+      document.getElementById('playerAutoFrontChk').checked = true;
+    } else {
+      playerNationId = -1;
+    }
+
+    recalcNationStats();
+    rebuildArmyDivisionsAndFronts();
+    updateEncirclements();
+    updateModeUI();
+    addLog(`Campaign started: ${startYear} (${activeMapType.toUpperCase()}, ${provCount.toLocaleString()} pts).`, 'event');
+
+    polDirty = true;
+    resetCamera();
+    updateAllUI();
+    renderPoliticalBuffer();
+  }
+
+  // Spawn discrete army divisions per nation (instead of cluttering every micro-province)
+  function rebuildArmyDivisionsAndFronts() {
+    divisions = [];
+    let divId = 0;
+    for (let nId = 0; nId < nations.length; nId++) {
+      const n = nations[nId];
+      if (!n.alive || n.provincesCount === 0) continue;
+
+      const owned = [];
+      for (let i = 0; i < provCount; i++) {
+        if (provOwner[i] === nId) owned.push(i);
+      }
+      if (owned.length === 0) continue;
+
+      // 3 to 9 major divisions/corps depending on country size
+      const targetDivs = clamp(Math.round(Math.sqrt(owned.length) * 0.45), 2, 9);
+      const step = Math.max(1, Math.floor(owned.length / targetDivs));
+      const perDivK = Math.max(12, Math.round(n.totalTroops / targetDivs));
+
+      for (let d = 0; d < targetDivs; d++) {
+        const pid = (d === 0 && n.capitalProvId >= 0 && provOwner[n.capitalProvId] === nId)
+          ? n.capitalProvId
+          : owned[Math.min(owned.length - 1, d * step)];
+        divisions.push({
+          id: divId++,
+          owner: nId,
+          provId: pid,
+          x: provCx[pid],
+          y: provCy[pid],
+          troopsK: perDivK,
+          name: `${d + 1}st Army`
+        });
+      }
+    }
+    rebuildFrontlineClusters();
+  }
+
+  // Compute clustered frontline numbers (e.g. 2.572.244) and curved black offensive arrows
+  function rebuildFrontlineClusters() {
+    frontlineGroups = [];
+    for (let nId = 0; nId < nations.length; nId++) {
+      const n = nations[nId];
+      if (!n.alive || n.enemies.size === 0) continue;
+
+      // Group this nation's divisions by the enemy they face
+      const byEnemy = new Map();
+      for (let i = 0; i < divisions.length; i++) {
+        const div = divisions[i];
+        if (div.owner !== nId) continue;
+        // Find nearest enemy province
+        let bestEnemy = -1, bestEnemyProv = -1, bestD = Infinity;
+        for (const eId of n.enemies) {
+          const eN = nations[eId];
+          if (!eN || !eN.alive) continue;
+          const d = (div.x - eN.labelX) ** 2 + (div.y - eN.labelY) ** 2;
+          if (d < bestD) { bestD = d; bestEnemy = eId; }
+        }
+        if (bestEnemy === -1) continue;
+
+        // Find close enemy border province for arrow target
+        for (let p = 0; p < provCount; p += 3) {
+          if (provOwner[p] === bestEnemy) {
+            const d2 = (provCx[p] - div.x) ** 2 + (provCy[p] - div.y) ** 2;
+            if (d2 < 14000) { bestEnemyProv = p; break; }
+          }
+        }
+        if (!byEnemy.has(bestEnemy)) byEnemy.set(bestEnemy, []);
+        byEnemy.get(bestEnemy).push({ div, targetProv: bestEnemyProv });
+      }
+
+      for (const [eId, list] of byEnemy.entries()) {
+        if (list.length === 0) continue;
+        let sx = 0, sy = 0, totalK = 0;
+        const arrows = [];
+        for (const item of list) {
+          sx += item.div.x;
+          sy += item.div.y;
+          totalK += item.div.troopsK;
+          if (item.targetProv !== -1 && arrows.length < 5) {
+            const tx = provCx[item.targetProv];
+            const ty = provCy[item.targetProv];
+            const mx = (item.div.x + tx) * 0.5;
+            const my = (item.div.y + ty) * 0.5;
+            const dx = tx - item.div.x;
+            const dy = ty - item.div.y;
+            // Curved arc control point perpendicular to attack vector
+            const cx = mx - dy * 0.22;
+            const cy = my + dx * 0.22;
+            arrows.push({ x1: item.div.x, y1: item.div.y, cx, cy, x2: tx, y2: ty });
+          }
+        }
+        const ax = sx / list.length;
+        const ay = sy / list.length;
+        const en = nations[eId];
+        let angle = en ? Math.atan2(en.labelY - ay, en.labelX - ax) + Math.PI * 0.5 : 0;
+        if (angle > Math.PI * 0.5) angle -= Math.PI;
+        if (angle < -Math.PI * 0.5) angle += Math.PI;
+
+        frontlineGroups.push({
+          owner: nId,
+          x: ax,
+          y: ay,
+          angle,
+          troopsK: totalK,
+          arrows
+        });
+      }
+    }
+  }
+
+  let cachedGeoJsonData = null;
+
+  async function snapBordersWithGeoJSON(silent = false) {
+    if (!silent) showToast('Applying real-world GeoJSON borders...');
+    try {
+      if (!cachedGeoJsonData) {
+        const res = await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson');
+        if (!res.ok) throw new Error('Network error');
+        cachedGeoJsonData = await res.json();
+      }
+      const geo = cachedGeoJsonData;
+
+      // Calibrated projection for europe-satellite-map.jpg (converging meridians in the north)
+      const projectGeo = (lon, lat) => {
+        const latNorm = clamp((lat - 33.0) / (71.5 - 33.0), 0, 1);
+        const lonScale = lerp(0.0156, 0.0124, latNorm);
+        const lonCenter = lerp(12.2, 13.8, latNorm);
+        const u = 0.505 + (lon - lonCenter) * lonScale;
+        const v = 0.968 - latNorm * 0.945 - Math.pow((lon - 14.0) * 0.0085, 2) * 0.045;
+        return [u, v];
+      };
+
+      const ALIASES = {
+        'united kingdom': 'United Kingdom',
+        'czechia': 'Czechia',
+        'czech republic': 'Czechia',
+        'bosnia and herzegovina': 'Bosnia',
+        'republic of serbia': 'Serbia & Montenegro',
+        'serbia': 'Serbia & Montenegro',
+        'montenegro': 'Serbia & Montenegro',
+        'north macedonia': 'North Macedonia',
+        'macedonia': 'North Macedonia',
+        'russian federation': 'Russia',
+        'russia': 'Russia',
+        'republic of moldova': 'Moldova',
+        'moldova': 'Moldova',
+        'syria': 'Turkey',
+        'iraq': 'Turkey',
+        'iran': 'Azerbaijan'
+      };
+
+      const countryPolys = [];
+      for (const feat of geo.features) {
+        const rawName = (feat.properties?.ADMIN || feat.properties?.name || '').toLowerCase();
+        let match = ALIASES[rawName] ? nations.find(n => n.name === ALIASES[rawName]) : null;
+        if (!match) {
+          match = nations.find(n => n.name.toLowerCase() === rawName || rawName.includes(n.name.toLowerCase()));
+        }
+        if (!match) continue;
+
+        const geom = feat.geometry;
+        const rawList = geom.type === 'Polygon' ? [geom.coordinates] : (geom.type === 'MultiPolygon' ? geom.coordinates : []);
+        const uvPolys = rawList.map(poly => poly[0].map(pt => projectGeo(pt[0], pt[1])));
+        countryPolys.push({ id: match.id, polys: uvPolys });
+      }
+
+      // 1. Wipe old borders completely so no remnants remain
+      provOwner.fill(-1);
+      for (let i = 0; i < provCount; i++) provFlags[i] &= ~6;
+
+      // 2. Assign provinces strictly inside GeoJSON polygons
+      let matched = 0;
+      for (let i = 0; i < provCount; i++) {
+        if (provArea[i] === 0) continue;
+        const u = provCx[i] / GRID_W;
+        const v = provCy[i] / GRID_H;
+        for (let c = 0; c < countryPolys.length; c++) {
+          const cp = countryPolys[c];
+          let hit = false;
+          for (let p = 0; p < cp.polys.length; p++) {
+            if (pointInPoly(u, v, cp.polys[p])) { hit = true; break; }
+          }
+          if (hit) { provOwner[i] = cp.id; matched++; break; }
+        }
+      }
+
+      // 3. Flood-fill coastal shoreline pixels to nearest assigned country
+      const q = [];
+      for (let i = 0; i < provCount; i++) if (provOwner[i] >= 0) q.push(i);
+      let head = 0;
+      while (head < q.length) {
+        const cur = q[head++];
+        const o = provOwner[cur];
+        const s = provNbOffset[cur], e = provNbOffset[cur + 1];
+        for (let k = s; k < e; k++) {
+          const nb = provNbData[k];
+          if (provArea[nb] > 0 && provOwner[nb] === -1) {
+            provOwner[nb] = o;
+            q.push(nb);
+          }
+        }
+      }
+
+      // Assign any remaining isolated islands to nearest nation
+      for (let i = 0; i < provCount; i++) {
+        if (provArea[i] > 0 && provOwner[i] === -1) {
+          let bestN = 0, bestD = Infinity;
+          for (let nIdx = 0; nIdx < nations.length; nIdx++) {
+            const d = (provCx[i] - nations[nIdx].labelX) ** 2 + (provCy[i] - nations[nIdx].labelY) ** 2;
+            if (d < bestD) { bestD = d; bestN = nIdx; }
+          }
+          provOwner[i] = bestN;
+        }
+      }
+
+      const templates = EUROPE_ERAS[currentEra] || EUROPE_ERAS[2026];
+      for (let i = 0; i < nations.length; i++) {
+        const tpl = templates[i];
+        if (tpl) {
+          const cap = findNearestProvUV(tpl.u, tpl.v);
+          if (cap >= 0 && provOwner[cap] === i) {
+            nations[i].capitalProvId = cap;
+            provFlags[cap] |= 2;
+          }
+        }
+      }
+
+      recalcNationStats();
+      rebuildArmyDivisionsAndFronts();
+      updateEncirclements();
+      polDirty = true;
+      updateAllUI();
+      if (!silent) showToast(`GeoJSON borders applied (${matched.toLocaleString()} pts)!`);
+    } catch (_) {
+      if (!silent) showToast('GeoJSON offline — use Border Brush to edit.');
+    }
+  }
+
+  function recalcNationStats() {
+    for (let i = 0; i < nations.length; i++) {
+      const n = nations[i];
+      n.provincesCount = 0;
+      n.citiesCount = 0;
+      n.totalTroops = 0;
+      n._sx = 0;
+      n._sy = 0;
+    }
+    for (let i = 0; i < provCount; i++) {
+      const o = provOwner[i];
+      if (o < 0 || provArea[i] === 0 || !nations[o]) continue;
+      const n = nations[o];
+      n.provincesCount++;
+      if (provCityIdx[i] >= 0) n.citiesCount++;
+      n._sx += provCx[i];
+      n._sy += provCy[i];
+    }
+    for (let i = 0; i < divisions.length; i++) {
+      const d = divisions[i];
+      if (nations[d.owner]) nations[d.owner].totalTroops += d.troopsK;
+    }
+    for (let i = 0; i < nations.length; i++) {
+      const n = nations[i];
+      if (n.provincesCount === 0) {
+        if (n.alive) eliminateNation(n.id, -1);
+        n.alive = false;
+      } else {
+        n.alive = true;
+        n.labelX = n._sx / n.provincesCount;
+        n.labelY = n._sy / n.provincesCount;
+        if (n.capitalProvId < 0 || provOwner[n.capitalProvId] !== n.id) relocateCapital(n.id);
+      }
+    }
+  }
+
+  function relocateCapital(nationId) {
+    const n = nations[nationId];
+    if (!n || !n.alive) return;
+    let best = -1, bestScore = -1;
+    for (let i = 0; i < provCount; i++) {
+      if (provOwner[i] !== nationId) continue;
+      const score = provCityIdx[i] >= 0 ? 500 : 1;
+      if (score > bestScore) { bestScore = score; best = i; }
+    }
+    if (best >= 0) { n.capitalProvId = best; provFlags[best] |= 2; }
+  }
+
+  function eliminateNation(loserId, winnerId) {
+    const loser = nations[loserId];
+    if (!loser) return;
+    loser.alive = false;
+    divisions = divisions.filter(d => d.owner !== loserId);
+    for (const eId of loser.enemies) {
+      if (nations[eId]) { nations[eId].enemies.delete(loserId); nations[eId].warStart.delete(loserId); }
+    }
+    for (const aId of loser.allies) {
+      if (nations[aId]) nations[aId].allies.delete(loserId);
+    }
+    loser.enemies.clear(); loser.allies.clear();
+    const wName = winnerId >= 0 && nations[winnerId] ? nations[winnerId].name : 'coalition';
+    addLog(`${loser.name} capitulated to ${wName}!`, 'war');
+  }
+
+  // ==========================================================================
+  // 9. ENCIRCLEMENT POCKETS (BFS FROM CAPITALS)
+  // ==========================================================================
+  function updateEncirclements() {
+    if (!settings.pockets) {
+      for (let i = 0; i < provCount; i++) provFlags[i] &= ~4;
+      return;
+    }
+    supplyVisited.fill(0);
+
+    for (let nId = 0; nId < nations.length; nId++) {
+      const n = nations[nId];
+      if (!n.alive || n.capitalProvId < 0 || provOwner[n.capitalProvId] !== nId) continue;
+      let head = 0, tail = 0;
+      supplyQueue[tail++] = n.capitalProvId;
+      supplyVisited[n.capitalProvId] = 1;
+      let hasSea = (provFlags[n.capitalProvId] & 1) !== 0;
+
+      while (head < tail) {
+        const cur = supplyQueue[head++];
+        if (provFlags[cur] & 1) hasSea = true;
+        const s = provNbOffset[cur], e = provNbOffset[cur + 1];
+        for (let k = s; k < e; k++) {
+          const nb = provNbData[k];
+          if (!supplyVisited[nb] && provOwner[nb] === nId) {
+            supplyVisited[nb] = 1;
+            supplyQueue[tail++] = nb;
+          }
+        }
+      }
+
+      if (hasSea) {
+        for (let i = 0; i < provCount; i++) {
+          if (provOwner[i] === nId && !supplyVisited[i] && (provFlags[i] & 1) && provCityIdx[i] >= 0) {
+            supplyVisited[i] = 1;
+            supplyQueue[tail++] = i;
+          }
+        }
+        while (head < tail) {
+          const cur = supplyQueue[head++];
+          const s = provNbOffset[cur], e = provNbOffset[cur + 1];
+          for (let k = s; k < e; k++) {
+            const nb = provNbData[k];
+            if (!supplyVisited[nb] && provOwner[nb] === nId) {
+              supplyVisited[nb] = 1;
+              supplyQueue[tail++] = nb;
+            }
+          }
+        }
+      }
+    }
+
+    let changed = false;
+    for (let i = 0; i < provCount; i++) {
+      const o = provOwner[i];
+      const wasPocket = (provFlags[i] & 4) !== 0;
+      const isPocket = o >= 0 && nations[o] && nations[o].enemies.size > 0 && !supplyVisited[i];
+      if (wasPocket !== isPocket) {
+        if (isPocket) provFlags[i] |= 4; else provFlags[i] &= ~4;
+        changed = true;
+      }
+    }
+    if (changed) polDirty = true;
+  }
+
+  // ==========================================================================
+  // 10. DIPLOMACY, PEACE CONFERENCES & DIVISION COMBAT
+  // ==========================================================================
+  function declareWar(aId, bId, callAllies = true) {
+    if (aId === bId || aId < 0 || bId < 0) return false;
+    const a = nations[aId], b = nations[bId];
+    if (!a || !b || !a.alive || !b.alive || a.enemies.has(bId)) return false;
+    a.allies.delete(bId); b.allies.delete(aId);
+    a.enemies.add(bId); b.enemies.add(aId);
+    a.warStart.set(bId, simTick); b.warStart.set(aId, simTick);
+    addLog(`${a.name} declared war on ${b.name}!`, 'war');
+
+    if (callAllies) {
+      for (const allyId of Array.from(a.allies)) {
+        if (allyId !== bId && nations[allyId]?.alive && !nations[allyId].allies.has(bId) && Math.random() < 0.75) {
+          declareWar(allyId, bId, false);
+        }
+      }
+      for (const allyId of Array.from(b.allies)) {
+        if (allyId !== aId && nations[allyId]?.alive && !nations[allyId].allies.has(aId) && Math.random() < 0.75) {
+          declareWar(allyId, aId, false);
+        }
+      }
+    }
+    rebuildFrontlineClusters();
+    updateEncirclements();
+    polDirty = true;
+    return true;
+  }
+
+  function formAlliance(aId, bId) {
+    if (aId === bId || aId < 0 || bId < 0) return false;
+    const a = nations[aId], b = nations[bId];
+    if (!a || !b || !a.alive || !b.alive || a.allies.has(bId)) return false;
+    makePeace(aId, bId, true);
+    a.allies.add(bId); b.allies.add(aId);
+    addLog(`${a.name} and ${b.name} signed a military alliance.`, 'ally');
+    return true;
+  }
+
+  function makePeace(aId, bId, silent = false) {
+    const a = nations[aId], b = nations[bId];
+    if (!a || !b || !a.enemies.has(bId)) return false;
+    a.enemies.delete(bId); b.enemies.delete(aId);
+    a.warStart.delete(bId); b.warStart.delete(aId);
+    if (!silent) {
+      const city = findNearestCityName(a.labelX, a.labelY);
+      addLog(`Treaty of ${city}: ${a.name} and ${b.name} signed peace.`, 'peace');
+    }
+    rebuildFrontlineClusters();
+    updateEncirclements();
+    polDirty = true;
+    return true;
+  }
+
+  function findNearestCityName(gx, gy) {
+    let best = 'Geneva', bestD = Infinity;
+    for (const c of activeCities) {
+      const d = (c.u * GRID_W - gx) ** 2 + (c.v * GRID_H - gy) ** 2;
+      if (d < bestD) { bestD = d; best = c.name; }
+    }
+    return best;
+  }
+
+  function triggerRebellion(targetNationId, startProvId = -1) {
+    const parent = nations[targetNationId];
+    if (!parent || !parent.alive || parent.provincesCount < 15) return false;
+    let seedProv = startProvId;
+    if (seedProv < 0 || provOwner[seedProv] !== targetNationId) {
+      const cap = parent.capitalProvId >= 0 ? parent.capitalProvId : 0;
+      let bestD = -1;
+      for (let i = 0; i < provCount; i += 2) {
+        if (provOwner[i] === targetNationId && i !== cap) {
+          const d = (provCx[i] - provCx[cap]) ** 2 + (provCy[i] - provCy[cap]) ** 2;
+          if (d > bestD) { bestD = d; seedProv = i; }
+        }
+      }
+    }
+    if (seedProv < 0) return false;
+
+    const id = nations.length;
+    const colorHex = hslToHex((id * 137.5) % 360, 74, 52);
+    const ideos = Object.keys(IDEOLOGIES).filter(k => k !== parent.ideology);
+    const rebelIdeo = ideos[Math.floor(Math.random() * ideos.length)];
+    const cityName = provCityIdx[seedProv] >= 0 ? activeCities[provCityIdx[seedProv]].name : 'Free';
+
+    const rebel = {
+      id,
+      name: `${cityName} Rebels`,
+      hex: colorHex,
+      rgb: hexToRgb(colorHex),
+      ideology: rebelIdeo,
+      doctrine: parent.doctrine,
+      aiEnabled: true,
+      capitalProvId: seedProv,
+      alive: true,
+      gold: 200,
+      authority: 45,
+      warExhaustion: 0,
+      manpowerK: 220,
+      provincesCount: 0,
+      citiesCount: 0,
+      totalTroops: 140,
+      labelX: provCx[seedProv],
+      labelY: provCy[seedProv],
+      enemies: new Set(),
+      allies: new Set(),
+      warStart: new Map()
+    };
+    nations.push(rebel);
+
+    const takeTarget = clamp(Math.floor(parent.provincesCount * 0.22), 8, Math.max(12, Math.floor(provCount * 0.015)));
+    const q = [seedProv];
+    const taken = new Set([seedProv]);
+    let head = 0;
+    while (head < q.length && taken.size < takeTarget) {
+      const cur = q[head++];
+      const s = provNbOffset[cur], e = provNbOffset[cur + 1];
+      for (let k = s; k < e; k++) {
+        if (taken.size >= takeTarget) break;
+        const nb = provNbData[k];
+        if (!taken.has(nb) && provOwner[nb] === targetNationId && nb !== parent.capitalProvId) {
+          taken.add(nb);
+          q.push(nb);
+        }
+      }
+    }
+    for (const pid of taken) provOwner[pid] = id;
+    provFlags[seedProv] |= 2;
+
+    recalcNationStats();
+    rebuildArmyDivisionsAndFronts();
+    addLog(`Revolution in ${parent.name}! ${rebel.name} (${IDEOLOGIES[rebelIdeo].en}) rose up!`, 'event');
+    declareWar(id, targetNationId, false);
+    polDirty = true;
+    return true;
+  }
+
+  // Advance a division toward a target province, capturing a realistic sector of provinces along the front
+  function advanceDivisionToward(div, targetProvId) {
+    const atkNation = nations[div.owner];
+    if (!atkNation || !atkNation.alive || targetProvId < 0) return false;
+
+    const tx = provCx[targetProvId];
+    const ty = provCy[targetProvId];
+    const dist = Math.hypot(tx - div.x, ty - div.y);
+    const doc = DOCTRINES[atkNation.doctrine];
+    const ideo = IDEOLOGIES[atkNation.ideology];
+    const stepLen = Math.min(dist, (16 + doc.speed * 10) * ideo.speedMod);
+
+    const nx = dist > 1 ? div.x + ((tx - div.x) / dist) * stepLen : tx;
+    const ny = dist > 1 ? div.y + ((ty - div.y) / dist) * stepLen : ty;
+    const newProv = findNearestProvUV(nx / GRID_W, ny / GRID_H);
+    if (newProv < 0) return false;
+
+    const dstOwner = provOwner[newProv];
+
+    // Friendly movement
+    if (dstOwner === div.owner) {
+      div.provId = newProv;
+      div.x = provCx[newProv];
+      div.y = provCy[newProv];
+      return true;
+    }
+
+    // Enemy territory capture (frontline breakthrough)
+    if (dstOwner >= 0 && atkNation.enemies.has(dstOwner)) {
+      const defNation = nations[dstOwner];
+      if (!defNation) return false;
+
+      // Check if an enemy division is defending nearby
+      let defenderDiv = null;
+      for (let i = 0; i < divisions.length; i++) {
+        const ed = divisions[i];
+        if (ed.owner === dstOwner && Math.hypot(ed.x - nx, ed.y - ny) < 38) {
+          defenderDiv = ed;
+          break;
+        }
+      }
+
+      const atkPower = div.troopsK * ideo.atkMod * doc.atk;
+      const defIdeo = IDEOLOGIES[defNation.ideology];
+      const defDoc = DOCTRINES[defNation.doctrine];
+      const pocketPenalty = (provFlags[newProv] & 4) ? 0.52 : 1.0;
+      const defPower = defenderDiv
+        ? defenderDiv.troopsK * defIdeo.defMod * defDoc.def * pocketPenalty
+        : 18 * defIdeo.defMod * defDoc.def * pocketPenalty;
+
+      attacks.push({ x1: div.x, y1: div.y, x2: provCx[newProv], y2: provCy[newProv], color: '#fde047', battle: true, life: 22 });
+
+      if (atkPower >= defPower * 0.72) {
+        // Capture a local sector of enemy micro-provinces (brush-like frontline push)
+        const captureRadius = clamp(Math.round(14 * doc.speed), 10, 26);
+        const capR2 = captureRadius * captureRadius;
+        const cx = provCx[newProv], cy = provCy[newProv];
+        let capturedAny = false;
+        let capturedCap = false;
+
+        for (let p = 0; p < provCount; p++) {
+          if (provOwner[p] === dstOwner) {
+            const d2 = (provCx[p] - cx) ** 2 + (provCy[p] - cy) ** 2;
+            if (d2 <= capR2) {
+              if (provFlags[p] & 2) capturedCap = true;
+              provOwner[p] = div.owner;
+              provFlags[p] &= ~6;
+              capturedAny = true;
+            }
+          }
+        }
+
+        if (capturedAny) {
+          div.provId = newProv;
+          div.x = cx;
+          div.y = cy;
+          div.troopsK = Math.max(8, div.troopsK - Math.round(defPower * 0.08));
+          atkNation.authority = clamp(atkNation.authority + 1, 0, 100);
+          defNation.warExhaustion = clamp(defNation.warExhaustion + 2, 0, 100);
+          if (defenderDiv) {
+            defenderDiv.troopsK = Math.max(5, defenderDiv.troopsK - Math.round(atkPower * 0.14));
+          }
+          if (capturedCap) {
+            addLog(`Capital of ${defNation.name} captured by ${atkNation.name}!`, 'war');
+            defNation.warExhaustion = clamp(defNation.warExhaustion + 18, 0, 100);
+          }
+          polDirty = true;
+          recalcNationStats();
+          return true;
+        }
+      } else {
+        // Repulsed
+        div.troopsK = Math.max(8, div.troopsK - Math.round(defPower * 0.06));
+      }
+    }
+    return false;
+  }
+
+  function stepSimulation() {
+    simTick++;
+
+    for (let i = attacks.length - 1; i >= 0; i--) {
+      attacks[i].life--;
+      if (attacks[i].life <= 0) attacks.splice(i, 1);
+    }
+
+    // 1. Economy & realistic manpower replenishment (independent of micro-province count)
+    if (simTick % 12 === 0) {
+      for (let i = 0; i < nations.length; i++) {
+        const n = nations[i];
+        if (!n.alive) continue;
+        const ideo = IDEOLOGIES[n.ideology];
+        const income = (10 + n.citiesCount * 4.2) * ideo.econMod;
+        n.gold = clamp(n.gold + income - n.totalTroops * 0.008, 0, 15000);
+        n.manpowerK = clamp(n.manpowerK + (4 + n.citiesCount * 1.8) * ideo.mobMod, 0, 4500);
+      }
+
+      for (let i = 0; i < divisions.length; i++) {
+        const d = divisions[i];
+        const n = nations[d.owner];
+        if (!n || !n.alive) continue;
+        const inPocket = (provFlags[d.provId] & 4) !== 0;
+        if (inPocket) {
+          d.troopsK = Math.max(5, d.troopsK * 0.93);
+        } else if (d.troopsK < 450 && n.manpowerK >= 10) {
+          const reinforce = Math.min(12, n.manpowerK * 0.15);
+          d.troopsK += reinforce;
+          n.manpowerK -= reinforce;
+        }
+      }
+      recalcNationStats();
+      rebuildFrontlineClusters();
+    }
+
+    // 2. Division movement & frontline combat (continues even when Diplomacy AI is turned OFF!)
+    if (simTick % 4 === 0) {
+      for (let i = 0; i < divisions.length; i++) {
+        const d = divisions[i];
+        const n = nations[d.owner];
+        if (!n || !n.alive || n.enemies.size === 0) continue;
+        if (gameMode === 'player' && n.id === playerNationId && !playerAutoFront) continue;
+        if (Math.random() > 0.45) continue;
+
+        // Find nearest enemy province
+        let bestTarget = -1, bestScore = -Infinity;
+        for (const eId of n.enemies) {
+          const en = nations[eId];
+          if (!en || !en.alive) continue;
+          if (en.capitalProvId >= 0 && provOwner[en.capitalProvId] === eId) {
+            const dist = Math.hypot(provCx[en.capitalProvId] - d.x, provCy[en.capitalProvId] - d.y);
+            const score = 1200 - dist + (DOCTRINES[n.doctrine].capitalBias * 140);
+            if (score > bestScore) { bestScore = score; bestTarget = en.capitalProvId; }
+          }
+        }
+        if (bestTarget >= 0) {
+          advanceDivisionToward(d, bestTarget);
+        }
+      }
+      rebuildFrontlineClusters();
+    }
+
+    // 3. Encirclement check
+    if (simTick % 18 === 0) {
+      updateEncirclements();
+    }
+
+    // 4. Diplomacy AI (respects globalAiEnabled and per-nation n.aiEnabled!)
+    if (simTick % 26 === 0 && globalAiEnabled) {
+      runDiplomacyAI();
+    }
+  }
+
+  function runDiplomacyAI() {
+    const aliveList = nations.filter(n => n.alive);
+    if (aliveList.length < 2) return;
+
+    for (let i = 0; i < aliveList.length; i++) {
+      const a = aliveList[i];
+      if (!a.aiEnabled) continue;
+      if (gameMode === 'player' && a.id === playerNationId) continue;
+
+      // Check war exhaustion -> peace treaty
+      for (const [eId, startT] of a.warStart) {
+        const b = nations[eId];
+        if (!b || !b.alive) continue;
+        if (gameMode === 'player' && eId === playerNationId) continue;
+        if ((a.warExhaustion > 75 || simTick - startT > 360) && Math.random() < 0.14) {
+          makePeace(a.id, eId);
+          a.warExhaustion = Math.max(0, a.warExhaustion - 35);
+          break;
+        }
+      }
+
+      if (a.enemies.size >= 2) continue;
+
+      // Pick a nearby nation
+      const b = aliveList[Math.floor(Math.random() * aliveList.length)];
+      if (a.id === b.id || a.enemies.has(b.id) || a.allies.has(b.id)) continue;
+      const dist = Math.hypot(a.labelX - b.labelX, a.labelY - b.labelY);
+      if (dist > 280) continue;
+
+      const sameIdeo = a.ideology === b.ideology;
+      if (sameIdeo && a.allies.size < 2 && b.allies.size < 2 && Math.random() < 0.035) {
+        formAlliance(a.id, b.id);
+        continue;
+      }
+
+      let warProb = 0.015 * settings.aggressiveness * IDEOLOGIES[a.ideology].aggrMod;
+      if (!sameIdeo) warProb *= 1.6;
+      if (a.totalTroops > b.totalTroops * 1.2) warProb *= 1.4;
+      if (Math.random() < warProb) {
+        declareWar(a.id, b.id, true);
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 11. BUFFERED POLITICAL RENDERER + FRONTLINE ARROWS & BIG WHITE NUMBERS
+  // ==========================================================================
+  function renderPoliticalBuffer() {
+    polDirty = false;
+    const isSat = (mapMode === 'satellite');
+    const isPol = (mapMode === 'political');
+    const fillAlpha = isSat ? 126 : (isPol ? 236 : 0);
+    const showGrid = settings.grid && provCount <= 120000;
+
+    for (let y = 0; y < GRID_H; y++) {
+      const row = y * GRID_W;
+      for (let x = 0; x < GRID_W; x++) {
+        const idx = row + x;
+        const p = idx * 4;
+        const pid = provGrid[idx];
+
+        if (pid < 0) {
+          if (isPol) { polPixels[p] = 17; polPixels[p + 1] = 38; polPixels[p + 2] = 74; polPixels[p + 3] = 255; }
+          else { polPixels[p + 3] = 0; }
+          continue;
+        }
+
+        const o = provOwner[pid];
+        if (o < 0 || !nations[o]) { polPixels[p + 3] = 0; continue; }
+
+        const n = nations[o];
+        let r = n.rgb[0], g = n.rgb[1], b = n.rgb[2], a = fillAlpha;
+
+        const rPid = x < GRID_W - 1 ? provGrid[idx + 1] : -1;
+        const dPid = y < GRID_H - 1 ? provGrid[idx + GRID_W] : -1;
+        const lPid = x > 0 ? provGrid[idx - 1] : -1;
+        const uPid = y > 0 ? provGrid[idx - GRID_W] : -1;
+
+        const rOwn = rPid >= 0 ? provOwner[rPid] : -1;
+        const dOwn = dPid >= 0 ? provOwner[dPid] : -1;
+        const lOwn = lPid >= 0 ? provOwner[lPid] : -1;
+        const uOwn = uPid >= 0 ? provOwner[uPid] : -1;
+
+        const isCountryBorder = (rOwn !== o || dOwn !== o || lOwn !== o || uOwn !== o);
+        const isFrontline =
+          (rOwn >= 0 && n.enemies.has(rOwn)) ||
+          (dOwn >= 0 && n.enemies.has(dOwn)) ||
+          (lOwn >= 0 && n.enemies.has(lOwn)) ||
+          (uOwn >= 0 && n.enemies.has(uOwn));
+
+        if (isFrontline) {
+          r = 255; g = 60; b = 50; a = 248;
+        } else if (isCountryBorder) {
+          if (o === selectedNationId || o === actionFirstNationId) {
+            r = 255; g = 255; b = 255; a = 242;
+          } else {
+            r = (r * 0.40) | 0; g = (g * 0.40) | 0; b = (b * 0.40) | 0;
+            a = mapMode === 'physical' ? 145 : 230;
+          }
+        } else if (pid === hoveredProvId) {
+          r = Math.min(255, r + 55); g = Math.min(255, g + 55); b = Math.min(255, b + 55);
+          a = Math.max(95, a + 45);
+        } else if ((provFlags[pid] & 4) && (((x + y) & 3) === 0)) {
+          r = 239; g = 68; b = 68; a = 195;
+        } else if (showGrid && (rPid !== pid || dPid !== pid) && mapMode !== 'physical') {
+          r = (r * 0.74) | 0; g = (g * 0.74) | 0; b = (b * 0.74) | 0;
+          a = isSat ? 140 : 235;
+        }
+
+        polPixels[p] = r; polPixels[p + 1] = g; polPixels[p + 2] = b; polPixels[p + 3] = a;
+      }
+    }
+    polCtx.putImageData(polImgData, 0, 0);
+  }
+
+  function drawFrame() {
+    const cw = mainCanvas.width;
+    const ch = mainCanvas.height;
+    ctx.fillStyle = '#070d18';
+    ctx.fillRect(0, 0, cw, ch);
+
+    const drawW = GRID_W * cam.scale;
+    const drawH = GRID_H * cam.scale;
+    ctx.imageSmoothingEnabled = true;
+
+    if (mapMode !== 'political') {
+      ctx.drawImage(satCanvas, cam.x, cam.y, drawW, drawH);
+    }
+    ctx.drawImage(polCanvas, cam.x, cam.y, drawW, drawH);
+
+    // Sea bridges
+    ctx.save();
+    ctx.strokeStyle = 'rgba(147, 197, 253, 0.32)';
+    ctx.lineWidth = Math.max(1, cam.scale * 1.1);
+    ctx.setLineDash([4 * cam.scale, 4 * cam.scale]);
+    for (const [p1, p2] of activeBridges) {
+      ctx.beginPath();
+      ctx.moveTo(cam.x + p1[0] * GRID_W * cam.scale, cam.y + p1[1] * GRID_H * cam.scale);
+      ctx.lineTo(cam.x + p2[0] * GRID_W * cam.scale, cam.y + p2[1] * GRID_H * cam.scale);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Battle flashes
+    if (attacks.length > 0) {
+      ctx.save();
+      for (let i = 0; i < attacks.length; i++) {
+        const a = attacks[i];
+        const alpha = Math.min(1, a.life / 14);
+        ctx.globalAlpha = alpha * 0.9;
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.arc(cam.x + a.x2 * cam.scale, cam.y + a.y2 * cam.scale, Math.max(4, cam.scale * 6), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    if (mapMode !== 'physical') {
+      drawCountryLabels();
+      drawFrontlinesAndBigNumbers();
+      drawDivisions();
+    }
+    drawCities();
+  }
+
+  // Big white soldier numbers with dots (e.g. 2.572.244) & curved black offensive arrows like the reference photo!
+  function drawFrontlinesAndBigNumbers() {
+    if (frontlineGroups.length === 0) return;
+    ctx.save();
+
+    for (let g = 0; g < frontlineGroups.length; g++) {
+      const fg = frontlineGroups[g];
+      // 1. Curved black offensive arrows
+      for (let a = 0; a < fg.arrows.length; a++) {
+        const ar = fg.arrows[a];
+        const sx1 = cam.x + ar.x1 * cam.scale;
+        const sy1 = cam.y + ar.y1 * cam.scale;
+        const scx = cam.x + ar.cx * cam.scale;
+        const scy = cam.y + ar.cy * cam.scale;
+        const sx2 = cam.x + ar.x2 * cam.scale;
+        const sy2 = cam.y + ar.y2 * cam.scale;
+
+        ctx.strokeStyle = 'rgba(15, 15, 18, 0.88)';
+        ctx.lineWidth = Math.max(3, cam.scale * 4.5);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(sx1, sy1);
+        ctx.quadraticCurveTo(scx, scy, sx2, sy2);
+        ctx.stroke();
+
+        // Arrowhead
+        const ang = Math.atan2(sy2 - scy, sx2 - scx);
+        const headLen = Math.max(8, cam.scale * 11);
+        ctx.fillStyle = 'rgba(15, 15, 18, 0.92)';
+        ctx.beginPath();
+        ctx.moveTo(sx2, sy2);
+        ctx.lineTo(sx2 - headLen * Math.cos(ang - 0.45), sy2 - headLen * Math.sin(ang - 0.45));
+        ctx.lineTo(sx2 - headLen * 0.65 * Math.cos(ang), sy2 - headLen * 0.65 * Math.sin(ang));
+        ctx.lineTo(sx2 - headLen * Math.cos(ang + 0.45), sy2 - headLen * Math.sin(ang + 0.45));
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 2. Large white dotted troop number along the front (e.g., 2.572.244)
+      const sx = cam.x + fg.x * cam.scale;
+      const sy = cam.y + fg.y * cam.scale;
+      if (sx < -160 || sx > mainCanvas.width + 160 || sy < -80 || sy > mainCanvas.height + 80) continue;
+
+      const txt = formatSoldiersDots(fg.troopsK);
+      const fontSize = clamp(14 * cam.scale, 11, 28);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(fg.angle);
+      ctx.font = `900 ${fontSize.toFixed(1)}px "Arial Black", Impact, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = Math.max(3.5, fontSize * 0.24);
+      ctx.strokeStyle = 'rgba(10, 12, 16, 0.95)';
+      ctx.strokeText(txt, 0, 0);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(txt, 0, 0);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  // Discrete division counters (only 2-9 per country, never cluttering every pixel)
+  function drawDivisions() {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i < divisions.length; i++) {
+      const d = divisions[i];
+      const n = nations[d.owner];
+      if (!n || !n.alive) continue;
+
+      const sx = cam.x + d.x * cam.scale;
+      const sy = cam.y + d.y * cam.scale;
+      if (sx < -40 || sx > mainCanvas.width + 40 || sy < -30 || sy > mainCanvas.height + 30) continue;
+
+      const isSel = (d.id === selectedDivId);
+      const label = formatK(d.troopsK);
+      ctx.font = '800 10px -apple-system, sans-serif';
+      const w = Math.max(30, ctx.measureText(label).width + 10);
+      const h = 15;
+
+      ctx.fillStyle = isSel ? '#1d4ed8' : 'rgba(10, 16, 28, 0.90)';
+      ctx.strokeStyle = isSel ? '#fde047' : n.hex;
+      ctx.lineWidth = isSel ? 2.2 : 1.6;
+      ctx.beginPath();
+      ctx.roundRect(sx - w / 2, sy - h / 2, w, h, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, sx, sy + 0.5);
+    }
+    ctx.restore();
+  }
+
+  function drawCountryLabels() {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const areaRatio = provCount / 10000;
+
+    for (let i = 0; i < nations.length; i++) {
+      const n = nations[i];
+      if (!n.alive || n.provincesCount < 2) continue;
+      const sx = cam.x + n.labelX * cam.scale;
+      const sy = cam.y + n.labelY * cam.scale;
+      if (sx < -140 || sx > mainCanvas.width + 140 || sy < -60 || sy > mainCanvas.height + 60) continue;
+
+      const normProvs = n.provincesCount / Math.max(0.2, areaRatio);
+      const fontSize = clamp(Math.sqrt(normProvs) * cam.scale * 1.45, 9, 22);
+      if (fontSize < 8.5 && n.id !== selectedNationId) continue;
+
+      const ideo = IDEOLOGIES[n.ideology];
+      const text = `${ideo.icon} ${n.name}`;
+      ctx.font = `800 ${fontSize.toFixed(1)}px -apple-system, sans-serif`;
+      ctx.lineWidth = Math.max(2.6, fontSize * 0.24);
+      ctx.strokeStyle = 'rgba(6, 10, 20, 0.92)';
+      ctx.strokeText(text, sx, sy);
+      ctx.fillStyle = (n.id === selectedNationId) ? '#fef08a' : '#f8fafc';
+      ctx.fillText(text, sx, sy);
+    }
+    ctx.restore();
+  }
+
+  function drawCities() {
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const boxes = [];
+
+    for (let c = 0; c < activeCities.length; c++) {
+      const city = activeCities[c];
+      const sx = cam.x + city.u * GRID_W * cam.scale;
+      const sy = cam.y + city.v * GRID_H * cam.scale;
+      if (sx < -40 || sx > mainCanvas.width + 40 || sy < -30 || sy > mainCanvas.height + 30) continue;
+
+      if (city.major || cam.scale >= 1.15) {
+        const sz = city.major ? Math.max(2.5, cam.scale * 2.2) : Math.max(1.8, cam.scale * 1.6);
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1;
+        ctx.fillRect(sx - sz, sy - sz, sz * 2, sz * 2);
+        ctx.strokeRect(sx - sz, sy - sz, sz * 2, sz * 2);
+      }
+
+      if (settings.cities && ((city.major && cam.scale >= 0.8) || (!city.major && cam.scale >= 1.45))) {
+        const fSize = clamp(8.5 + cam.scale * 1.4, 9, 13);
+        ctx.font = `600 ${fSize.toFixed(1)}px -apple-system, sans-serif`;
+        const tw = ctx.measureText(city.name).width;
+        const bx = sx + 6, by = sy - fSize * 0.6, bw = tw + 4, bh = fSize * 1.2;
+        let overlap = false;
+        for (let k = 0; k < boxes.length; k++) {
+          const b = boxes[k];
+          if (bx < b[0] + b[2] && bx + bw > b[0] && by < b[1] + b[3] && by + bh > b[1]) { overlap = true; break; }
+        }
+        if (overlap) continue;
+        boxes.push([bx, by, bw, bh]);
+
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(6, 10, 20, 0.9)';
+        ctx.strokeText(city.name, sx + 6, sy);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText(city.name, sx + 6, sy);
+      }
+    }
+    ctx.restore();
+  }
+
+  // ==========================================================================
+  // 12. CAMERA, INPUT & BORDER BRUSH
+  // ==========================================================================
+  function resizeCanvas() {
+    mainCanvas.width = window.innerWidth;
+    mainCanvas.height = window.innerHeight;
+    clampCamera();
+  }
+
+  function resetCamera() {
+    const availW = Math.max(240, window.innerWidth - (window.innerWidth > 780 ? 275 : 20));
+    const availH = Math.max(240, window.innerHeight - 120);
+    cam.scale = clamp(Math.min(availW / GRID_W, availH / GRID_H), cam.minScale, cam.maxScale);
+    cam.x = (window.innerWidth - GRID_W * cam.scale) * 0.5 - (window.innerWidth > 780 ? 115 : 0);
+    cam.y = (window.innerHeight - GRID_H * cam.scale) * 0.5 + 8;
+    clampCamera();
+  }
+
+  function clampCamera() {
+    const mw = GRID_W * cam.scale, mh = GRID_H * cam.scale;
+    cam.x = Math.min(window.innerWidth - 100, Math.max(100 - mw, cam.x));
+    cam.y = Math.min(window.innerHeight - 100, Math.max(100 - mh, cam.y));
+  }
+
+  function zoomAt(sx, sy, factor) {
+    const next = clamp(cam.scale * factor, cam.minScale, cam.maxScale);
+    if (next === cam.scale) return;
+    const wx = (sx - cam.x) / cam.scale;
+    const wy = (sy - cam.y) / cam.scale;
+    cam.scale = next;
+    cam.x = sx - wx * next;
+    cam.y = sy - wy * next;
+    clampCamera();
+  }
+
+  function screenToProv(clientX, clientY) {
+    const rect = mainCanvas.getBoundingClientRect();
+    const gx = Math.floor((clientX - rect.left - cam.x) / cam.scale);
+    const gy = Math.floor((clientY - rect.top - cam.y) / cam.scale);
+    if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H) return -1;
+    return provGrid[gy * GRID_W + gx];
+  }
+
+  function findDivisionNearScreen(clientX, clientY) {
+    const rect = mainCanvas.getBoundingClientRect();
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+    let best = -1, bestD = 22 * 22;
+    for (let i = 0; i < divisions.length; i++) {
+      const dx = (cam.x + divisions[i].x * cam.scale) - sx;
+      const dy = (cam.y + divisions[i].y * cam.scale) - sy;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = divisions[i].id; }
+    }
+    return best;
+  }
+
+  function paintBordersAt(clientX, clientY) {
+    if (selectedNationId < 0 || !nations[selectedNationId]?.alive) return;
+    const rect = mainCanvas.getBoundingClientRect();
+    const gx = (clientX - rect.left - cam.x) / cam.scale;
+    const gy = (clientY - rect.top - cam.y) / cam.scale;
+    const r2 = brushRadius * brushRadius;
+    let changed = false;
+
+    for (let i = 0; i < provCount; i++) {
+      if (provArea[i] === 0 || provOwner[i] === selectedNationId) continue;
+      const dx = provCx[i] - gx;
+      const dy = provCy[i] - gy;
+      if (dx * dx + dy * dy <= r2) {
+        provOwner[i] = selectedNationId;
+        provFlags[i] &= ~6;
+        changed = true;
+      }
+    }
+    if (changed) {
+      recalcNationStats();
+      polDirty = true;
+    }
+  }
+
+  function focusOnNation(nId) {
+    const n = nations[nId];
+    if (!n || !n.alive) return;
+    cam.x = window.innerWidth * 0.46 - n.labelX * cam.scale;
+    cam.y = window.innerHeight * 0.5 - n.labelY * cam.scale;
+    clampCamera();
+  }
+
+  function handleMapClick(clientX, clientY, isRightClick = false) {
+    const pid = screenToProv(clientX, clientY);
+    const clickedDivId = findDivisionNearScreen(clientX, clientY);
+
+    if (isRightClick) {
+      if (selectedDivId >= 0 && pid >= 0) {
+        const div = divisions.find(d => d.id === selectedDivId);
+        if (div && (gameMode === 'god' || div.owner === playerNationId)) {
+          advanceDivisionToward(div, pid);
+          rebuildFrontlineClusters();
+          updateAllUI();
+        }
+      }
+      return;
+    }
+
+    if (currentTool === 'order') {
+      if (clickedDivId >= 0) {
+        const div = divisions.find(d => d.id === clickedDivId);
+        if (div && (gameMode === 'god' || div.owner === playerNationId)) {
+          selectedDivId = div.id;
+          selectedNationId = div.owner;
+          showActionPrompt(`${div.name} (${formatK(div.troopsK)}) selected — click destination`);
+          updateInspector();
+          return;
+        }
+      }
+      if (selectedDivId >= 0 && pid >= 0) {
+        const div = divisions.find(d => d.id === selectedDivId);
+        if (div) {
+          advanceDivisionToward(div, pid);
+          rebuildFrontlineClusters();
+          updateAllUI();
+        }
+      }
+      return;
+    }
+
+    if (currentTool === 'inspect') {
+      if (clickedDivId >= 0) {
+        selectedDivId = clickedDivId;
+        const div = divisions.find(d => d.id === clickedDivId);
+        if (div) selectedNationId = div.owner;
+        updateInspector();
+        polDirty = true;
+        return;
+      }
+      selectedDivId = -1;
+      if (pid < 0) {
+        selectedNationId = -1;
+        selectedProvId = -1;
+        hideInspector();
+        polDirty = true;
+        return;
+      }
+      selectedProvId = pid;
+      selectedNationId = provOwner[pid];
+      updateInspector();
+      polDirty = true;
+      return;
+    }
+
+    if (gameMode !== 'god') return;
+
+    if (currentTool === 'paint') {
+      paintBordersAt(clientX, clientY);
+      updateAllUI();
+      return;
+    }
+
+    if (pid < 0) return;
+    const ownerId = provOwner[pid];
+
+    if (currentTool === 'troops') {
+      if (ownerId >= 0 && nations[ownerId]) {
+        nations[ownerId].totalTroops += 150;
+        const d = divisions.find(x => x.owner === ownerId);
+        if (d) d.troopsK += 150;
+        rebuildFrontlineClusters();
+        showToast(`+150k army to ${nations[ownerId].name}`);
+        updateAllUI();
+      }
+    } else if (currentTool === 'revolt') {
+      if (ownerId >= 0 && triggerRebellion(ownerId, pid)) {
+        showToast('Revolution started!');
+        updateAllUI();
+      }
+    } else if (currentTool === 'war' || currentTool === 'ally') {
+      if (ownerId < 0) return;
+      if (actionFirstNationId === -1) {
+        actionFirstNationId = ownerId;
+        showActionPrompt(`${nations[ownerId].name} → select second nation`);
+        polDirty = true;
+      } else if (actionFirstNationId !== ownerId) {
+        if (currentTool === 'war') declareWar(actionFirstNationId, ownerId, true);
+        else formAlliance(actionFirstNationId, ownerId);
+        actionFirstNationId = -1;
+        hideActionPrompt();
+        polDirty = true;
+        updateAllUI();
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 13. SAVE / LOAD CAMPAIGNS
+  // ==========================================================================
+  function buildSavePayload() {
+    const provB64 = uint16ToBase64(new Uint16Array(provOwner.subarray(0, provCount)));
+    return {
+      version: 3,
+      timestamp: Date.now(),
+      mapType: activeMapType,
+      era: currentEra,
+      startYear,
+      simTick,
+      provCount,
+      targetProvs: settings.targetProvs,
+      customMapDataUrl: customSatelliteImg ? satCanvas.toDataURL('image/jpeg', 0.86) : null,
+      provOwnerB64: provB64,
+      nations: nations.map(n => ({
+        id: n.id, name: n.name, hex: n.hex, ideology: n.ideology, doctrine: n.doctrine,
+        aiEnabled: n.aiEnabled, capitalProvId: n.capitalProvId, alive: n.alive,
+        gold: n.gold, authority: n.authority, warExhaustion: n.warExhaustion,
+        manpowerK: n.manpowerK, totalTroops: n.totalTroops,
+        enemies: Array.from(n.enemies), allies: Array.from(n.allies)
+      }))
+    };
+  }
+
+  function uint16ToBase64(u16) {
+    const bytes = new Uint8Array(u16.buffer, u16.byteOffset, u16.byteLength);
+    let bin = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(bin);
+  }
+
+  function base64ToUint16(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Uint16Array(bytes.buffer);
+  }
+
+  function saveCurrentMap() {
+    const payload = buildSavePayload();
+    const label = `${activeMapType.toUpperCase()} ${getCurrentYear()} (${nations.filter(n => n.alive).length} nations)`;
+
+    if (currentUser && userDB[currentUser]) {
+      userDB[currentUser].savedMaps.unshift({
+        id: 'save_' + Date.now(),
+        title: label,
+        date: new Date().toLocaleString(),
+        data: payload
+      });
+      if (userDB[currentUser].savedMaps.length > 12) userDB[currentUser].savedMaps.pop();
+      safeSet('aoc_users_db_v3', userDB);
+      renderSavedMapsList();
+      showToast(`Saved to ${currentUser}'s account!`);
+    } else {
+      showToast('Exported JSON file (sign in to save to account)');
+    }
+
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `aoc_${activeMapType}_${getCurrentYear()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function loadSavedPayload(payload) {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'flex';
+    await new Promise(r => setTimeout(r, 30));
+
+    activeMapType = payload.mapType || 'europe';
+    activeCities = activeMapType === 'world' ? WORLD_CITIES : EUROPE_CITIES;
+    activeBridges = activeMapType === 'world' ? WORLD_SEA_BRIDGES : EUROPE_SEA_BRIDGES;
+
+    if (payload.customMapDataUrl) {
+      try {
+        const img = await loadExternalImage(payload.customMapDataUrl);
+        customSatelliteImg = img;
+        scanImageToLandMask(img);
+      } catch (_) {
+        generateFallbackSatellite(activeMapType);
+      }
+    } else if (activeMapType === 'europe' && settings.europeMapUrl) {
+      try {
+        const img = await loadExternalImage(settings.europeMapUrl);
+        customSatelliteImg = img;
+        scanImageToLandMask(img);
+      } catch (_) {
+        generateFallbackSatellite('europe');
+      }
+    } else {
+      generateFallbackSatellite(activeMapType);
+    }
+
+    settings.targetProvs = payload.targetProvs || payload.provCount || 10000;
+    buildUltraDenseProvinces();
+
+    startYear = payload.startYear || 2026;
+    currentEra = payload.era || 2026;
+    simTick = payload.simTick || 0;
+    attacks = [];
+    eventLog = [];
+
+    nations = (payload.nations || []).map(sn => ({
+      id: sn.id,
+      name: sn.name,
+      hex: sn.hex,
+      rgb: hexToRgb(sn.hex),
+      ideology: sn.ideology || 'neutral',
+      doctrine: sn.doctrine || 'network',
+      aiEnabled: sn.aiEnabled !== false,
+      capitalProvId: sn.capitalProvId,
+      alive: sn.alive !== false,
+      gold: sn.gold || 300,
+      authority: sn.authority || 50,
+      warExhaustion: sn.warExhaustion || 0,
+      manpowerK: sn.manpowerK || 300,
+      provincesCount: 0,
+      citiesCount: 0,
+      totalTroops: sn.totalTroops || 180,
+      labelX: 0,
+      labelY: 0,
+      enemies: new Set(sn.enemies || []),
+      allies: new Set(sn.allies || []),
+      warStart: new Map()
+    }));
+
+    if (payload.provOwnerB64) {
+      const arr = base64ToUint16(payload.provOwnerB64);
+      const len = Math.min(provCount, arr.length);
+      for (let i = 0; i < len; i++) {
+        provOwner[i] = arr[i] === 65535 ? -1 : arr[i];
+      }
+    }
+
+    recalcNationStats();
+    rebuildArmyDivisionsAndFronts();
+    updateEncirclements();
+    polDirty = true;
+    resetCamera();
+    updateAllUI();
+    renderPoliticalBuffer();
+    document.getElementById('mainMenuScreen').classList.add('hidden');
+    document.getElementById('resumeGameBtn').style.display = 'inline-flex';
+    overlay.style.display = 'none';
+    showToast('Saved map loaded!');
+  }
+
+  // ==========================================================================
+  // 14. UI UPDATES & EVENT LISTENERS
+  // ==========================================================================
+  const inspectorEl = document.getElementById('inspector');
+  const inspNameInput = document.getElementById('inspNameInput');
+  const inspIdeoSelect = document.getElementById('inspIdeoSelect');
+  const inspDocSelect = document.getElementById('inspDocSelect');
+  const hoverTip = document.getElementById('hoverTip');
+
+  function showToast(msg) {
+    const box = document.getElementById('toastBox');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 250); }, 2300);
+  }
+
+  function showActionPrompt(txt) {
+    document.getElementById('actionPromptText').textContent = txt;
+    document.getElementById('actionPrompt').classList.remove('hidden');
+  }
+  function hideActionPrompt() {
+    document.getElementById('actionPrompt').classList.add('hidden');
+    actionFirstNationId = -1;
+  }
+
+  function addLog(text, type = 'info') {
+    eventLog.unshift({ year: getCurrentYear(), text, type });
+    if (eventLog.length > 55) eventLog.pop();
+    document.getElementById('eventLog').innerHTML = eventLog.map(e =>
+      `<div class="log-item log-${e.type}"><b>[${e.year}]</b> ${e.text}</div>`
+    ).join('');
+  }
+
+  function hideInspector() { inspectorEl.classList.add('hidden'); }
+
+  function updateGlobalAiButtonUI() {
+    const btn = document.getElementById('toggleGlobalAiBtn');
+    if (!btn) return;
+    btn.textContent = globalAiEnabled ? '🤖 All AI: ON' : '🤖 All AI: OFF';
+    btn.classList.toggle('btn-primary', globalAiEnabled);
+    btn.classList.toggle('btn-danger', !globalAiEnabled);
+  }
+
+  function updateInspector() {
+    if (selectedNationId < 0 || !nations[selectedNationId] || !nations[selectedNationId].alive) {
+      hideInspector();
+      return;
+    }
+    const n = nations[selectedNationId];
+    inspectorEl.classList.remove('hidden');
+
+    const isOwnPlayer = (gameMode === 'player' && n.id === playerNationId);
+    document.getElementById('inspSwatch').style.background = n.hex;
+    document.getElementById('inspTitle').textContent = `${IDEOLOGIES[n.ideology].icon} ${n.name}`;
+    document.getElementById('inspCountryAiChk').checked = n.aiEnabled !== false;
+
+    if (document.activeElement !== inspNameInput) inspNameInput.value = n.name;
+
+    const isRu = settings.lang === 'ru';
+    inspIdeoSelect.innerHTML = Object.values(IDEOLOGIES).map(id =>
+      `<option value="${id.id}" ${id.id === n.ideology ? 'selected' : ''}>${id.icon} ${isRu ? id.ru : id.en}</option>`
+    ).join('');
+    document.getElementById('inspIdeoBonus').textContent = isRu ? IDEOLOGIES[n.ideology].descRu : IDEOLOGIES[n.ideology].descEn;
+
+    const curYear = getCurrentYear();
+    inspDocSelect.innerHTML = Object.values(DOCTRINES).map(d => {
+      const locked = settings.yearLock && curYear < d.minYear && d.id !== n.doctrine;
+      return `<option value="${d.id}" ${d.id === n.doctrine ? 'selected' : ''} ${locked ? 'disabled' : ''}>${isRu ? d.ru : d.en} ${locked ? `(${d.minYear}+)` : ''}</option>`;
+    }).join('');
+    document.getElementById('inspDocBonus').textContent = DOCTRINES[n.doctrine].minYear + '+';
+
+    document.getElementById('inspProvs').textContent = n.provincesCount.toLocaleString();
+    document.getElementById('inspArmy').textContent = formatSoldiersDots(n.totalTroops);
+    document.getElementById('inspAuth').textContent = `${Math.round(n.authority)} / ${Math.round(n.warExhaustion)}%`;
+
+    document.getElementById('playerControlsBox').style.display = isOwnPlayer ? 'flex' : 'none';
+
+    const wars = Array.from(n.enemies).filter(id => nations[id]?.alive);
+    const allies = Array.from(n.allies).filter(id => nations[id]?.alive);
+    document.getElementById('inspWarCnt').textContent = wars.length;
+    document.getElementById('inspAllyCnt').textContent = allies.length;
+    document.getElementById('inspWarList').innerHTML = wars.length
+      ? wars.map(id => `<button class="chip chip-war" data-focus="${id}">${nations[id].name}</button>`).join('')
+      : '<span style="color:#64748b;font-size:11px;">—</span>';
+    document.getElementById('inspAllyList').innerHTML = allies.length
+      ? allies.map(id => `<button class="chip chip-ally" data-focus="${id}">${nations[id].name}</button>`).join('')
+      : '<span style="color:#64748b;font-size:11px;">—</span>';
+  }
+
+  function updateLeaderboard() {
+    const alive = nations.filter(n => n.alive && n.provincesCount > 0);
+    alive.sort((a, b) => b.provincesCount - a.provincesCount);
+    document.getElementById('aliveCountLbl').textContent = alive.length;
+    const maxP = alive.length > 0 ? alive[0].provincesCount : 1;
+
+    document.getElementById('leaderboard').innerHTML = alive.slice(0, 20).map((n, idx) => {
+      const pct = Math.max(5, Math.round((n.provincesCount / maxP) * 100));
+      const ideo = IDEOLOGIES[n.ideology];
+      const aiTag = n.aiEnabled ? '' : ' ⏸AI';
+      return `
+        <button class="rank-row ${n.id === selectedNationId ? 'selected' : ''}" data-nid="${n.id}">
+          <div class="rank-top">
+            <div class="rank-name">
+              <span style="color:#64748b;width:16px;">${idx + 1}.</span>
+              <span class="swatch" style="background:${n.hex};"></span>
+              <span class="txt">${ideo.icon} ${n.name}${aiTag}</span>
+            </div>
+            <span style="color:#fca5a5;font-size:10.5px;font-weight:700;">${formatK(n.totalTroops)}</span>
+          </div>
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${n.hex};"></div></div>
+        </button>`;
+    }).join('');
+  }
+
+  function updateAllUI() {
+    document.getElementById('dateLabel').textContent = getDateStr();
+    updateLeaderboard();
+    if (selectedNationId >= 0) updateInspector();
+  }
+
+  function updateModeUI() {
+    const isGod = gameMode === 'god';
+    document.getElementById('modeBadge').textContent = isGod
+      ? (settings.lang === 'ru' ? '👑 Симулятор Бога' : '👑 God Simulator')
+      : `🎖 ${nations[playerNationId]?.name || 'Player'}`;
+    document.querySelectorAll('.god-only').forEach(el => {
+      if (el.id === 'brushControls') el.style.display = (isGod && currentTool === 'paint') ? 'flex' : 'none';
+      else el.style.display = isGod ? 'inline-flex' : 'none';
+    });
+    setTool('inspect');
+  }
+
+  function setSimSpeed(spd) {
+    simSpeed = spd;
+    document.querySelectorAll('.speed-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.speed) === spd));
+    document.getElementById('simDot').className = spd === 0 ? 'dot-live dot-paused' : 'dot-live';
+  }
+
+  function setTool(tool) {
+    currentTool = tool;
+    hideActionPrompt();
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+    mainCanvas.classList.toggle('crosshair', tool !== 'inspect');
+    document.getElementById('brushControls').style.display = (gameMode === 'god' && tool === 'paint') ? 'flex' : 'none';
+
+    if (tool === 'war') showActionPrompt('Select first nation to declare war');
+    else if (tool === 'ally') showActionPrompt('Select first nation for alliance');
+    else if (tool === 'order') showActionPrompt('Click a division counter, then click target');
+    else if (tool === 'paint') showActionPrompt('Drag brush on map to paint borders for selected nation');
+    polDirty = true;
+  }
+
+  // ==========================================================================
+  // 15. ACCOUNT & MENU BINDINGS
+  // ==========================================================================
+  function renderAccountUI() {
+    const inBox = document.getElementById('loggedInBox');
+    const outBox = document.getElementById('loggedOutBox');
+    if (currentUser && userDB[currentUser]) {
+      inBox.style.display = 'flex';
+      outBox.style.display = 'none';
+      document.getElementById('currentUserLabel').textContent = currentUser;
+    } else {
+      inBox.style.display = 'none';
+      outBox.style.display = 'flex';
+    }
+    renderSavedMapsList();
+  }
+
+  function renderSavedMapsList() {
+    const listEl = document.getElementById('savedMapsList');
+    const saves = (currentUser && userDB[currentUser]) ? userDB[currentUser].savedMaps : [];
+    if (!saves || saves.length === 0) {
+      listEl.innerHTML = `<div style="font-size:11px;color:#64748b;padding:8px;">${tr('noSavedMaps')}</div>`;
+      return;
+    }
+    listEl.innerHTML = saves.map((s, idx) => `
+      <div class="saved-item">
+        <div style="min-width:0;">
+          <div style="font-weight:700;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</div>
+          <div style="font-size:10px;color:#94a3b8;">${s.date}</div>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-sm btn-primary" data-loadsave="${idx}">▶</button>
+          <button class="btn btn-sm btn-danger" data-delsave="${idx}">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function populateStartCountries(mapType, eraKey) {
+    const sel = document.getElementById('startCountrySelect');
+    const list = mapType === 'world' ? WORLD_NATIONS : (EUROPE_ERAS[eraKey] || EUROPE_ERAS[2026]);
+    sel.innerHTML = list.map((n, idx) =>
+      `<option value="${idx}">${IDEOLOGIES[n.ideo].icon} ${n.name}</option>`
+    ).join('');
+  }
+
+  async function launchNewCampaign(mapType, eraKey, mode, playerIdx) {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'flex';
+    document.getElementById('mainMenuScreen').classList.add('hidden');
+    await new Promise(r => setTimeout(r, 35));
+
+    activeMapType = mapType;
+    activeCities = mapType === 'world' ? WORLD_CITIES : EUROPE_CITIES;
+    activeBridges = mapType === 'world' ? WORLD_SEA_BRIDGES : EUROPE_SEA_BRIDGES;
+
+    if (mapType === 'europe') {
+      if (customSatelliteImg) {
+        scanImageToLandMask(customSatelliteImg);
+      } else if (settings.europeMapUrl) {
+        try {
+          const img = await loadExternalImage(settings.europeMapUrl);
+          customSatelliteImg = img;
+          scanImageToLandMask(img);
+        } catch (_) {
+          try {
+            const fbImg = await loadExternalImage(FALLBACK_EUROPE_MAP_URL);
+            customSatelliteImg = fbImg;
+            scanImageToLandMask(fbImg);
+          } catch (__) {
+            generateFallbackSatellite('europe');
+          }
+        }
+      } else {
+        generateFallbackSatellite('europe');
+      }
+    } else {
+      customSatelliteImg = null;
+      generateFallbackSatellite('world');
+    }
+
+    // Check if a custom GitHub scenario JSON exists in ./scenarios/{era}.json
+    const hostedScenario = mapType === 'europe' ? await tryLoadHostedScenario(eraKey) : null;
+    if (hostedScenario) {
+      overlay.style.display = 'none';
+      await loadSavedPayload(hostedScenario);
+      return;
+    }
+
+    buildUltraDenseProvinces();
+    startScenario(eraKey, mode, playerIdx);
+    if (mapType === 'europe' && Number(eraKey) === 2026) {
+      await snapBordersWithGeoJSON(true);
+    }
+    document.getElementById('resumeGameBtn').style.display = 'inline-flex';
+    overlay.style.display = 'none';
+  }
+
+  function bindEvents() {
+    window.addEventListener('resize', resizeCanvas);
+
+    // Account login / register
+    document.getElementById('authLoginBtn').onclick = () => {
+      const login = document.getElementById('authLoginInput').value.trim();
+      const pass = document.getElementById('authPassInput').value;
+      if (!userDB[login] || userDB[login].password !== pass) {
+        showToast('Invalid login or password');
+        return;
+      }
+      currentUser = login;
+      safeSet('aoc_current_user_v3', currentUser);
+      settings = Object.assign({}, DEFAULT_SETTINGS, userDB[login].settings || {});
+      if (!settings.europeMapUrl) settings.europeMapUrl = DEFAULT_EUROPE_MAP_URL;
+      applyLanguage();
+      renderAccountUI();
+      showToast(`Welcome back, ${login}!`);
+    };
+
+    document.getElementById('authRegBtn').onclick = () => {
+      const login = document.getElementById('authLoginInput').value.trim();
+      const pass = document.getElementById('authPassInput').value;
+      if (login.length < 3 || pass.length < 3) {
+        showToast('Login and password must be at least 3 chars');
+        return;
+      }
+      if (userDB[login]) {
+        showToast('Account already exists — click Sign In');
+        return;
+      }
+      userDB[login] = { password: pass, settings: Object.assign({}, settings), savedMaps: [] };
+      currentUser = login;
+      safeSet('aoc_users_db_v3', userDB);
+      safeSet('aoc_current_user_v3', currentUser);
+      renderAccountUI();
+      showToast(`Account ${login} created!`);
+    };
+
+    document.getElementById('authLogoutBtn').onclick = () => {
+      currentUser = null;
+      safeSet('aoc_current_user_v3', null);
+      renderAccountUI();
+    };
+
+    document.getElementById('savedMapsList').addEventListener('click', (e) => {
+      const loadBtn = e.target.closest('[data-loadsave]');
+      const delBtn = e.target.closest('[data-delsave]');
+      if (!currentUser || !userDB[currentUser]) return;
+      if (loadBtn) {
+        const item = userDB[currentUser].savedMaps[Number(loadBtn.dataset.loadsave)];
+        if (item?.data) loadSavedPayload(item.data);
+      } else if (delBtn) {
+        userDB[currentUser].savedMaps.splice(Number(delBtn.dataset.delsave), 1);
+        safeSet('aoc_users_db_v3', userDB);
+        renderSavedMapsList();
+      }
+    });
+
+    // Main Menu Setup Choices
+    let chosenMap = 'europe';
+    let chosenMode = 'god';
+    let chosenEra = 2026;
+    populateStartCountries(chosenMap, chosenEra);
+
+    document.querySelectorAll('.map-choice').forEach(b => b.onclick = () => {
+      chosenMap = b.dataset.maptype;
+      document.querySelectorAll('.map-choice').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      populateStartCountries(chosenMap, chosenEra);
+    });
+    document.querySelectorAll('.mode-choice').forEach(b => b.onclick = () => {
+      chosenMode = b.dataset.gmode;
+      document.querySelectorAll('.mode-choice').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      document.getElementById('playerCountrySelectWrap').style.display = chosenMode === 'player' ? 'block' : 'none';
+    });
+    document.querySelectorAll('.era-choice').forEach(b => b.onclick = () => {
+      chosenEra = Number(b.dataset.era);
+      document.querySelectorAll('.era-choice').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      populateStartCountries(chosenMap, chosenEra);
+    });
+    document.querySelectorAll('.density-choice').forEach(b => b.onclick = () => {
+      const d = Number(b.dataset.density);
+      settings.targetProvs = d;
+      persistUserAccount();
+      document.querySelectorAll('.density-choice').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    });
+
+    document.getElementById('launchGameBtn').onclick = () => {
+      const pIdx = Number(document.getElementById('startCountrySelect').value) || 0;
+      launchNewCampaign(chosenMap, chosenEra, chosenMode, pIdx);
+    };
+
+    document.getElementById('backToMenuBtn').onclick = () => {
+      setSimSpeed(0);
+      renderSavedMapsList();
+      document.getElementById('mainMenuScreen').classList.remove('hidden');
+    };
+    document.getElementById('resumeGameBtn').onclick = () => {
+      document.getElementById('mainMenuScreen').classList.add('hidden');
+    };
+
+    // Global AI toggle button
+    document.getElementById('toggleGlobalAiBtn').onclick = () => {
+      globalAiEnabled = !globalAiEnabled;
+      updateGlobalAiButtonUI();
+      showToast(globalAiEnabled ? 'Global Diplomacy AI Enabled' : 'Global Diplomacy AI Disabled');
+    };
+
+    // Upload Satellite Photo & GeoJSON
+    const photoInput = document.getElementById('hiddenPhotoInput');
+    document.getElementById('uploadPhotoBtn').onclick = () => photoInput.click();
+    photoInput.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await loadExternalImage(url);
+        customSatelliteImg = img;
+        scanImageToLandMask(img);
+        buildUltraDenseProvinces();
+        startScenario(currentEra, gameMode, Math.max(0, playerNationId));
+        showToast('Satellite photo loaded!');
+      } catch (_) {
+        showToast('Could not read image file');
+      } finally {
+        URL.revokeObjectURL(url);
+        photoInput.value = '';
+      }
+    };
+
+    document.getElementById('loadGeoJsonBtn').onclick = () => snapBordersWithGeoJSON(false);
+
+    // Border Brush Size & Export
+    const brushInput = document.getElementById('brushSizeInput');
+    brushInput.oninput = (e) => {
+      brushRadius = Number(e.target.value);
+      document.getElementById('brushSizeVal').textContent = brushRadius;
+    };
+    document.getElementById('exportScenarioCodeBtn').onclick = () => {
+      saveCurrentMap();
+    };
+
+    // Save & Import JSON
+    document.getElementById('saveMapBtn').onclick = saveCurrentMap;
+    const jsonInput = document.getElementById('hiddenJsonInput');
+    document.getElementById('menuImportJsonBtn').onclick = () => jsonInput.click();
+    jsonInput.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { loadSavedPayload(JSON.parse(reader.result)); }
+        catch (_) { showToast('Invalid JSON save file'); }
+      };
+      reader.readAsText(file);
+      jsonInput.value = '';
+    };
+
+    // Map mouse / touch controls
+    mainCanvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      handleMapClick(e.clientX, e.clientY, true);
+    });
+
+    mainCanvas.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      if (currentTool === 'paint' && gameMode === 'god') {
+        isPaintingBrush = true;
+        paintBordersAt(e.clientX, e.clientY);
+        return;
+      }
+      isDragging = true; dragMoved = false;
+      dragStartX = e.clientX; dragStartY = e.clientY;
+      camStartX = cam.x; camStartY = cam.y;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isPaintingBrush) {
+        paintBordersAt(e.clientX, e.clientY);
+        return;
+      }
+      if (isDragging) {
+        const dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragMoved = true;
+        if (dragMoved) {
+          cam.x = camStartX + dx; cam.y = camStartY + dy; clampCamera();
+          hoverTip.style.display = 'none';
+        }
+        return;
+      }
+      if (e.target === mainCanvas && provCount > 0) {
+        const pid = screenToProv(e.clientX, e.clientY);
+        if (pid !== hoveredProvId) { hoveredProvId = pid; polDirty = true; }
+        if (pid >= 0 && provOwner[pid] >= 0 && nations[provOwner[pid]]) {
+          const n = nations[provOwner[pid]];
+          const ideo = IDEOLOGIES[n.ideology];
+          const cIdx = provCityIdx[pid];
+          hoverTip.innerHTML = `
+            <div style="font-weight:800;color:#fff;">${ideo.icon} ${n.name}</div>
+            <div style="color:#cbd5e1;font-size:11px;">${cIdx >= 0 ? '🏙 ' + activeCities[cIdx].name : 'Region #' + pid}</div>
+            <div style="color:#fca5a5;font-size:11px;font-weight:700;">🪖 ${formatSoldiersDots(n.totalTroops)} ${(provFlags[pid] & 4) ? '• ⚠ POCKET' : ''}</div>`;
+          hoverTip.style.left = Math.min(window.innerWidth - 220, e.clientX + 14) + 'px';
+          hoverTip.style.top = Math.min(window.innerHeight - 75, e.clientY + 14) + 'px';
+          hoverTip.style.display = 'block';
+        } else {
+          hoverTip.style.display = 'none';
+        }
+      } else {
+        hoverTip.style.display = 'none';
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (isPaintingBrush) {
+        isPaintingBrush = false;
+        rebuildArmyDivisionsAndFronts();
+        updateEncirclements();
+        updateAllUI();
+        return;
+      }
+      if (!isDragging) return;
+      isDragging = false;
+      if (!dragMoved && e.target === mainCanvas && e.button === 0) handleMapClick(e.clientX, e.clientY, false);
+    });
+
+    mainCanvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.16 : 1 / 1.16);
+    }, { passive: false });
+
+    // Touch controls
+    mainCanvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        isDragging = true; dragMoved = false;
+        dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+        camStartX = cam.x; camStartY = cam.y;
+      } else if (e.touches.length === 2) {
+        isDragging = false;
+        lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      }
+    }, { passive: true });
+
+    mainCanvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && isDragging) {
+        const dx = e.touches[0].clientX - dragStartX, dy = e.touches[0].clientY - dragStartY;
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) dragMoved = true;
+        if (dragMoved) { cam.x = camStartX + dx; cam.y = camStartY + dy; clampCamera(); }
+      } else if (e.touches.length === 2) {
+        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        if (lastPinchDist > 0) zoomAt((e.touches[0].clientX + e.touches[1].clientX) * 0.5, (e.touches[0].clientY + e.touches[1].clientY) * 0.5, d / lastPinchDist);
+        lastPinchDist = d;
+      }
+    }, { passive: true });
+
+    mainCanvas.addEventListener('touchend', (e) => {
+      if (e.touches.length === 0) {
+        if (isDragging && !dragMoved && e.changedTouches.length === 1) {
+          handleMapClick(e.changedTouches[0].clientX, e.changedTouches[0].clientY, false);
+        }
+        isDragging = false; lastPinchDist = 0;
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.code === 'Space') { e.preventDefault(); setSimSpeed(simSpeed === 0 ? 1 : 0); }
+      else if (e.code === 'Escape') setTool('inspect');
+    });
+
+    document.querySelectorAll('.speed-btn').forEach(b => b.onclick = () => setSimSpeed(Number(b.dataset.speed)));
+    document.querySelectorAll('.mapmode-btn').forEach(b => b.onclick = () => {
+      mapMode = b.dataset.mapmode;
+      document.querySelectorAll('.mapmode-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      polDirty = true;
+    });
+
+    document.getElementById('zoomInBtn').onclick = () => zoomAt(window.innerWidth * 0.5, window.innerHeight * 0.5, 1.3);
+    document.getElementById('zoomOutBtn').onclick = () => zoomAt(window.innerWidth * 0.5, window.innerHeight * 0.5, 1 / 1.3);
+    document.getElementById('resetCamBtn').onclick = resetCamera;
+    document.getElementById('toggleSidebarBtn').onclick = () => document.getElementById('rightSidebar').classList.toggle('collapsed');
+    if (window.innerWidth < 780) document.getElementById('rightSidebar').classList.add('collapsed');
+
+    document.querySelectorAll('.tool-btn').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+    document.getElementById('cancelActionBtn').onclick = () => setTool('inspect');
+
+    document.getElementById('leaderboard').addEventListener('click', (e) => {
+      const row = e.target.closest('.rank-row');
+      if (!row) return;
+      selectedNationId = Number(row.dataset.nid);
+      focusOnNation(selectedNationId);
+      updateInspector();
+      updateLeaderboard();
+      polDirty = true;
+    });
+
+    // Inspector actions
+    document.getElementById('closeInspBtn').onclick = () => {
+      selectedNationId = -1; selectedDivId = -1; selectedProvId = -1; hideInspector(); polDirty = true;
+    };
+
+    const applyRename = () => {
+      if (selectedNationId < 0 || !nations[selectedNationId]) return;
+      const val = inspNameInput.value.trim();
+      if (!val) return;
+      nations[selectedNationId].name = val;
+      if (gameMode === 'player' && selectedNationId === playerNationId) {
+        document.getElementById('modeBadge').textContent = `🎖 ${val}`;
+      }
+      updateAllUI();
+    };
+    document.getElementById('inspRenameBtn').onclick = applyRename;
+    inspNameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyRename(); });
+
+    document.getElementById('inspCountryAiChk').onchange = (e) => {
+      if (selectedNationId < 0 || !nations[selectedNationId]) return;
+      nations[selectedNationId].aiEnabled = e.target.checked;
+      updateLeaderboard();
+      showToast(`${nations[selectedNationId].name} AI: ${e.target.checked ? 'ON' : 'OFF'}`);
+    };
+
+    inspIdeoSelect.onchange = () => {
+      if (selectedNationId < 0) return;
+      const n = nations[selectedNationId];
+      n.ideology = inspIdeoSelect.value;
+      const isRu = settings.lang === 'ru';
+      addLog(`${n.name} adopted ${isRu ? IDEOLOGIES[n.ideology].ru : IDEOLOGIES[n.ideology].en}.`, 'event');
+      updateAllUI();
+    };
+
+    inspDocSelect.onchange = () => {
+      if (selectedNationId < 0) return;
+      nations[selectedNationId].doctrine = inspDocSelect.value;
+      updateInspector();
+    };
+
+    inspectorEl.addEventListener('click', (e) => {
+      const ch = e.target.closest('[data-focus]');
+      if (!ch) return;
+      selectedNationId = Number(ch.dataset.focus);
+      focusOnNation(selectedNationId);
+      updateInspector();
+      polDirty = true;
+    });
+
+    document.getElementById('playerAutoFrontChk').onchange = (e) => { playerAutoFront = e.target.checked; };
+    document.getElementById('playerMobilizeBtn').onclick = () => {
+      if (playerNationId < 0) return;
+      const n = nations[playerNationId];
+      if (n.gold < 120) { showToast('Need 120💰'); return; }
+      n.gold -= 120;
+      const d = divisions.find(x => x.owner === n.id);
+      if (d) d.troopsK += 120;
+      recalcNationStats();
+      rebuildFrontlineClusters();
+      updateAllUI();
+    };
+    document.getElementById('playerOrderBtn').onclick = () => setTool('order');
+
+    document.getElementById('inspWarBtn').onclick = () => {
+      if (selectedNationId < 0) return;
+      if (gameMode === 'player' && selectedNationId !== playerNationId) {
+        declareWar(playerNationId, selectedNationId, true);
+        updateAllUI();
+      } else {
+        setTool('war');
+        actionFirstNationId = selectedNationId;
+        showActionPrompt(`${nations[selectedNationId].name} → select enemy`);
+      }
+    };
+    document.getElementById('inspAllyBtn').onclick = () => {
+      if (selectedNationId < 0) return;
+      if (gameMode === 'player' && selectedNationId !== playerNationId) {
+        formAlliance(playerNationId, selectedNationId);
+        updateAllUI();
+      } else {
+        setTool('ally');
+        actionFirstNationId = selectedNationId;
+        showActionPrompt(`${nations[selectedNationId].name} → select ally`);
+      }
+    };
+    document.getElementById('inspPeaceBtn').onclick = () => {
+      if (selectedNationId < 0) return;
+      const n = nations[selectedNationId];
+      for (const eId of Array.from(n.enemies)) makePeace(n.id, eId, true);
+      addLog(`${n.name} signed universal peace.`, 'peace');
+      updateAllUI();
+    };
+    document.getElementById('inspTroopsBtn').onclick = () => {
+      if (selectedNationId < 0) return;
+      const d = divisions.find(x => x.owner === selectedNationId);
+      if (d) d.troopsK += 150;
+      recalcNationStats();
+      rebuildFrontlineClusters();
+      updateAllUI();
+    };
+    document.getElementById('inspRebelBtn').onclick = () => {
+      if (selectedNationId < 0) return;
+      triggerRebellion(selectedNationId);
+      updateAllUI();
+    };
+
+    // Settings Modal
+    const syncSettingsUI = () => {
+      document.getElementById('setLangSelect').value = settings.lang;
+      document.getElementById('setDefaultMapUrl').value = settings.europeMapUrl || DEFAULT_EUROPE_MAP_URL;
+      document.getElementById('setDensity').value = settings.targetProvs;
+      document.getElementById('setDensityVal').textContent = Number(settings.targetProvs).toLocaleString();
+      document.getElementById('setWaterThresh').value = settings.waterThresh;
+      document.getElementById('setYearLock').checked = settings.yearLock;
+      document.getElementById('setPockets').checked = settings.pockets;
+      document.getElementById('setCities').checked = settings.cities;
+      document.getElementById('setGrid').checked = settings.grid;
+      document.getElementById('setAggr').value = settings.aggressiveness;
+      document.getElementById('setAggrVal').textContent = settings.aggressiveness.toFixed(1) + 'x';
+    };
+    syncSettingsUI();
+
+    const openSettings = () => { syncSettingsUI(); document.getElementById('settingsModal').classList.remove('hidden'); };
+    document.getElementById('menuSettingsBtn').onclick = openSettings;
+    document.getElementById('openSettingsBtn').onclick = openSettings;
+
+    document.getElementById('setDensity').oninput = (e) => {
+      document.getElementById('setDensityVal').textContent = Number(e.target.value).toLocaleString();
+    };
+    document.querySelectorAll('.preset-dens-btn').forEach(b => b.onclick = () => {
+      const v = Number(b.dataset.val);
+      document.getElementById('setDensity').value = v;
+      document.getElementById('setDensityVal').textContent = v.toLocaleString();
+    });
+
+    document.getElementById('setAggr').oninput = (e) => {
+      document.getElementById('setAggrVal').textContent = Number(e.target.value).toFixed(1) + 'x';
+    };
+
+    document.getElementById('applyMapUrlBtn').onclick = async () => {
+      const rawUrl = document.getElementById('setDefaultMapUrl').value.trim();
+      if (!rawUrl) return;
+      settings.europeMapUrl = normalizeImageUrl(rawUrl);
+      persistUserAccount();
+      showToast('Loading satellite map from URL...');
+      try {
+        const img = await loadExternalImage(settings.europeMapUrl);
+        customSatelliteImg = img;
+        if (provCount > 0 && activeMapType === 'europe') {
+          scanImageToLandMask(img);
+          buildUltraDenseProvinces();
+          startScenario(currentEra, gameMode, Math.max(0, playerNationId));
+        }
+        showToast('Satellite map updated!');
+      } catch (_) {
+        showToast('Failed to load image URL');
+      }
+    };
+
+    document.getElementById('rebuildMeshBtn').onclick = async () => {
+      settings.targetProvs = Number(document.getElementById('setDensity').value);
+      settings.waterThresh = Number(document.getElementById('setWaterThresh').value);
+      persistUserAccount();
+      if (provCount === 0) return;
+
+      document.getElementById('settingsModal').classList.add('hidden');
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.style.display = 'flex';
+      await new Promise(r => setTimeout(r, 35));
+
+      if (customSatelliteImg) scanImageToLandMask(customSatelliteImg);
+      buildUltraDenseProvinces();
+      startScenario(currentEra, gameMode, Math.max(0, playerNationId));
+      if (activeMapType === 'europe' && currentEra === 2026) {
+        await snapBordersWithGeoJSON(true);
+      }
+      overlay.style.display = 'none';
+      showToast(`Rebuilt mesh: ${provCount.toLocaleString()} micro-provinces!`);
+    };
+
+    const closeSettings = () => {
+      settings.lang = document.getElementById('setLangSelect').value;
+      settings.europeMapUrl = normalizeImageUrl(document.getElementById('setDefaultMapUrl').value) || DEFAULT_EUROPE_MAP_URL;
+      settings.targetProvs = Number(document.getElementById('setDensity').value);
+      settings.waterThresh = Number(document.getElementById('setWaterThresh').value);
+      settings.yearLock = document.getElementById('setYearLock').checked;
+      settings.pockets = document.getElementById('setPockets').checked;
+      settings.cities = document.getElementById('setCities').checked;
+      settings.grid = document.getElementById('setGrid').checked;
+      settings.aggressiveness = Number(document.getElementById('setAggr').value);
+      persistUserAccount();
+      applyLanguage();
+      updateEncirclements();
+      polDirty = true;
+      document.getElementById('settingsModal').classList.add('hidden');
+    };
+    document.getElementById('saveSettingsBtn').onclick = closeSettings;
+    document.getElementById('closeSettingsBtn').onclick = closeSettings;
+  }
+
+  // ==========================================================================
+  // 16. MAIN RENDER & SIMULATION LOOP
+  // ==========================================================================
+  let lastT = 0, simAcc = 0, uiAcc = 0;
+
+  function loop(now) {
+    if (!lastT) lastT = now;
+    const dt = Math.min(100, now - lastT);
+    lastT = now;
+
+    if (simSpeed > 0 && provCount > 0 && document.getElementById('mainMenuScreen').classList.contains('hidden')) {
+      const stepMs = 95 / simSpeed;
+      simAcc += dt;
+      let steps = 0;
+      const maxSteps = simSpeed >= 8 ? 5 : 2;
+      while (simAcc >= stepMs && steps < maxSteps) {
+        stepSimulation();
+        simAcc -= stepMs;
+        steps++;
+      }
+      if (steps === maxSteps) simAcc = 0;
+    }
+
+    if (provCount > 0) {
+      if (polDirty) renderPoliticalBuffer();
+      drawFrame();
+    }
+
+    uiAcc += dt;
+    if (uiAcc >= 300 && provCount > 0) {
+      uiAcc = 0;
+      updateAllUI();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  window.onload = () => {
+    resizeCanvas();
+    bindEvents();
+    renderAccountUI();
+    applyLanguage();
+    requestAnimationFrame(loop);
+  };
+})();
+</script>
+</body>
+</html>
