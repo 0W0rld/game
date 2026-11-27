@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1004,20 +1004,52 @@
   // 5. UNIFIED MERCATOR LANDMASK, TOPOGRAPHIC SATELLITE & WATER BODIES
   // ============================================================================
   const GEOJSON_ERA_URLS = {
-    2026: 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson',
-    1936: 'https://raw.githubusercontent.com/0W0rld/game/refs/heads/main/world_1936_cshapesu.json',
-    1912: 'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1914.geojson',
-    1800: 'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1800.geojson'
+    2026: [
+      'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson',
+      'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_2010.geojson'
+    ],
+    1936: [
+      'https://raw.githubusercontent.com/0W0rld/game/refs/heads/main/world_1936_cshapesu.json',
+      'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1938.geojson'
+    ],
+    1912: [
+      'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1914.geojson'
+    ],
+    1800: [
+      'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1800.geojson'
+    ]
   };
 
   async function fetchGeoJSONForKey(key) {
     if (geoJsonCache[key]) return geoJsonCache[key];
-    const url = GEOJSON_ERA_URLS[key] || GEOJSON_ERA_URLS[2026];
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`GeoJSON HTTP ${res.status} for ${key}`);
-    const data = await res.json();
-    geoJsonCache[key] = data;
-    return data;
+    const urls = GEOJSON_ERA_URLS[key] || GEOJSON_ERA_URLS[2026];
+    let lastError = null;
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`GeoJSON HTTP ${res.status} for ${url}`);
+        const rawText = await res.text();
+        if (!rawText || rawText.trim().length < 2) {
+          throw new Error(`Empty response body from ${url}`);
+        }
+        if (rawText.startsWith('version https://git-lfs.github.com/spec/')) {
+          throw new Error(`Git LFS pointer returned instead of JSON from ${url}`);
+        }
+        const data = JSON.parse(rawText);
+        if (!data || !Array.isArray(data.features) || data.features.length === 0) {
+          throw new Error(`Invalid or empty GeoJSON FeatureCollection from ${url}`);
+        }
+        geoJsonCache[key] = data;
+        return data;
+      } catch (err) {
+        lastError = err;
+        console.warn(`[GeoJSON] Mirror ${i + 1}/${urls.length} failed for ${key}:`, err.message);
+      }
+    }
+
+    throw lastError || new Error(`All GeoJSON sources failed for ${key}`);
   }
 
   function hash2(x, y) {
