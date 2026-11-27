@@ -1005,7 +1005,7 @@
   // ============================================================================
   const GEOJSON_ERA_URLS = {
     2026: 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson',
-    1936: 'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1938.geojson',
+    1936: 'https://raw.githubusercontent.com/0W0rld/game/refs/heads/main/world_1936_cshapesu.json',
     1912: 'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1914.geojson',
     1800: 'https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1800.geojson'
   };
@@ -1560,7 +1560,9 @@
 
   function extractFeatureName(props) {
     if (!props) return '';
-    const key = ['NAME', 'name', 'NAME_LONG', 'ADMIN', 'SUBJECTO'].find(k => props[k] && String(props[k]).trim().length > 0);
+    const key = ['NAME', 'name', 'ADMIN', 'CNTRY_NAME', 'cntry_name', 'NAME_LONG', 'SUBJECTO', 'SOVEREIGNT', 'COUNTRY', 'country'].find(
+      k => props[k] && String(props[k]).trim().length > 0
+    );
     return key ? String(props[key]).trim() : '';
   }
 
@@ -1773,22 +1775,23 @@
 
     const nLen = nations.length;
     const voteCounts = new Int32Array(provCount * nLen);
-    const neutralCounts = new Int32Array(provCount);
+    const landCounts = new Int32Array(provCount);
 
     for (let i = 0; i < TOTAL_CELLS; i++) {
       if (landMask[i] !== 1) continue;
       const pid = cellProvId[i];
       if (pid < 0 || pid >= provCount) continue;
+      landCounts[pid]++;
       const owner = cellOwner[i];
       if (owner >= 0 && owner < nLen) {
         voteCounts[pid * nLen + owner]++;
-      } else {
-        neutralCounts[pid]++;
       }
     }
 
+    // 1. Assign province if at least 10% of its land cells belong to a country
     for (let p = 0; p < provCount; p++) {
-      if (provArea[p] === 0) {
+      const totalLand = landCounts[p];
+      if (provArea[p] === 0 || totalLand === 0) {
         provOwner[p] = -1;
         continue;
       }
@@ -1802,10 +1805,73 @@
           bestOwner = nId;
         }
       }
-      if (bestOwner >= 0 && bestVotes >= neutralCounts[p]) {
+      const minRequired = Math.max(1, Math.ceil(totalLand * 0.10));
+      if (bestOwner >= 0 && bestVotes >= minRequired) {
         provOwner[p] = bestOwner;
       } else {
         provOwner[p] = -1;
+      }
+    }
+
+    // 2. Flood-fill from assigned provinces to adjacent unowned land provinces
+    let changed = true;
+    let passes = 0;
+    const nextOwners = new Int16Array(provOwner);
+    while (changed && passes < 40) {
+      changed = false;
+      passes++;
+      for (let p = 0; p < provCount; p++) {
+        if (provArea[p] === 0 || provOwner[p] >= 0) continue;
+        const start = provAdjOffset[p];
+        const end = provAdjOffset[p + 1];
+        if (start >= end) continue;
+
+        let chosen = -1;
+        let bestCount = 0;
+        for (let e = start; e < end; e++) {
+          const nbO = provOwner[provAdjList[e]];
+          if (nbO < 0) continue;
+          let cnt = 0;
+          for (let e2 = start; e2 < end; e2++) {
+            if (provOwner[provAdjList[e2]] === nbO) cnt++;
+          }
+          if (cnt > bestCount) {
+            bestCount = cnt;
+            chosen = nbO;
+          }
+        }
+        if (chosen >= 0) {
+          nextOwners[p] = chosen;
+          changed = true;
+        }
+      }
+      if (changed) provOwner.set(nextOwners);
+    }
+
+    // 3. Assign any remaining disconnected land islands/ridges to the nearest assigned land province (excluding Antarctica)
+    const assignedProvs = [];
+    for (let p = 0; p < provCount; p++) {
+      if (provArea[p] > 0 && provOwner[p] >= 0) assignedProvs.push(p);
+    }
+    if (assignedProvs.length > 0) {
+      for (let p = 0; p < provCount; p++) {
+        if (provArea[p] === 0 || provOwner[p] >= 0) continue;
+        const [, lat] = uvToLonLat(provCx[p] / GRID_W, provCy[p] / GRID_H, activeMapType);
+        if (activeMapType === 'world' && lat < -60) continue;
+
+        let bestOwner = -1;
+        let bestD = Infinity;
+        const px = provCx[p];
+        const py = provCy[p];
+        for (let k = 0; k < assignedProvs.length; k++) {
+          const ap = assignedProvs[k];
+          const d = (provCx[ap] - px) ** 2 + (provCy[ap] - py) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            bestOwner = provOwner[ap];
+          }
+        }
+        if (bestOwner >= 0) provOwner[p] = bestOwner;
       }
     }
   }
@@ -1843,7 +1909,10 @@
 
       for (let fIdx = 0; fIdx < eraGeo.features.length; fIdx++) {
         const feat = eraGeo.features[fIdx];
-        const rawName = extractFeatureName(feat.properties);
+        const props = feat.properties || {};
+        const rawName = (
+          props.NAME || props.name || props.ADMIN || props.CNTRY_NAME || props.cntry_name || extractFeatureName(props)
+        ).trim();
         if (!rawName) {
           console.warn('[GeoJSON] Feature without valid name skipped at index', fIdx);
           continue;
